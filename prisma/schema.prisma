@@ -1,0 +1,671 @@
+// MQ Solutions – Prisma schema (bản thiết kế v1.1 – tinh gọn, 26/10/2026)
+// Nguồn: MQSolutions_Docs/00-DATABASE.md · Quy ước: 00-CONG-NGHE-QUY-UOC.md mục 7
+// Tên model PascalCase, cột camelCase, bảng/cột trong DB snake_case (@@map / @map).
+//
+// NGUYÊN TẮC v1.1: web tổng chỉ lưu những gì web tự sinh ra (tài khoản, phiếu, tiền, nội dung, quản trị).
+// Mọi thông tin khám của cơ sở (chuyên khoa, bác sĩ, phòng, lịch, khung giờ, giá, danh mục hành chính,
+// hồ sơ MaBN của bệnh nhân) đều XEM TRỰC TIẾP từ ApiDatKham của cơ sở, không chép về Postgres
+// (chỉ cache ngắn hạn trong Redis).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [unaccent, pg_trgm]
+}
+
+// =====================================================================
+// 1. TÀI KHOẢN BỆNH NHÂN
+// =====================================================================
+
+enum AccountStatus {
+  ACTIVE
+  LOCKED
+  DISPUTED
+  DELETED
+}
+
+model PatientAccount {
+  id                 String        @id @default(uuid()) @db.Uuid
+  cccdEnc            String        @map("cccd_enc")                 // AES-256-GCM
+  cccdHmac           String        @unique @map("cccd_hmac")        // khóa chính nghiệp vụ
+  fullName           String        @map("full_name")
+  fullNameNorm       String        @map("full_name_norm")           // không dấu, viết hoa
+  birthYear          Int           @map("birth_year")
+  birthDate          DateTime?     @map("birth_date") @db.Date
+  gender             Int                                            // 1 nam, 0 nữ (theo HIS)
+  phone              String
+  phoneHmac          String        @map("phone_hmac")
+  email              String
+  addressLine        String?       @map("address_line")
+  insuranceNoEnc     String?       @map("insurance_no_enc")
+  passwordHash       String        @map("password_hash")            // cấp 1 lần qua Gmail, bệnh nhân tự đổi
+  mustChangePassword Boolean       @default(true) @map("must_change_password")
+  passwordChangedAt  DateTime?     @map("password_changed_at")
+  tokenVersion       Int           @default(0) @map("token_version") // tăng khi đổi / cấp lại mật khẩu → mọi phiên cũ hết hiệu lực
+  failedCount        Int           @default(0) @map("failed_count")
+  lockedUntil        DateTime?     @map("locked_until")
+  status             AccountStatus @default(ACTIVE)
+  consentVersion     String        @map("consent_version")
+  consentAt          DateTime      @map("consent_at")
+  lastLoginAt        DateTime?     @map("last_login_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  appointments   Appointment[]
+  notifications  Notification[]
+  reviews        Review[]
+  feedbacks      Feedback[]
+
+  @@index([phoneHmac])
+  @@map("patient_account")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  accountId String    @map("account_id") @db.Uuid
+  type      String                                       // BOOKED | REMIND | CANCELLED | REFUNDED | SYSTEM
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  account PatientAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, readAt])
+  @@map("notification")
+}
+
+// =====================================================================
+// 2. CƠ SỞ Y TẾ (thông tin hiển thị + kết nối ApiDatKham)
+// =====================================================================
+
+enum FacilityType {
+  BV_CONG
+  BV_TU
+  PHONG_KHAM
+  PHONG_MACH
+  XET_NGHIEM
+}
+
+enum FacilityStatus {
+  ACTIVE
+  PAUSED
+  INACTIVE
+}
+
+enum PayMethod {
+  ONLINE
+  AT_FACILITY
+}
+
+// Cách bệnh nhân chọn ở bước 2 luồng đặt khám – mỗi cơ sở cấu hình 1 lần (A02)
+enum BookingMode {
+  SPECIALTY // chọn chuyên khoa → phòng khám (bác sĩ do lịch HIS gán)
+  DOCTOR    // chọn chuyên khoa → bác sĩ (phòng theo lịch bác sĩ)
+  BOTH      // bệnh nhân tự chọn: theo phòng khám hoặc theo bác sĩ
+}
+
+model Facility {
+  id               String         @id @default(uuid()) @db.Uuid
+  code             String         @unique                         // BVQ7, BVSIS...
+  slug             String         @unique
+  name             String
+  type             FacilityType
+  provinceName     String         @map("province_name")           // để lọc theo tỉnh trên web
+  address          String
+  lat              Float?
+  lng              Float?
+  hotline          String?
+  workingHours     Json           @map("working_hours")
+  logoUrl          String?        @map("logo_url")
+  images           String[]
+  shortDesc        String?        @map("short_desc")
+  introJson        Json?          @map("intro_json")
+  // --- kết nối ApiDatKham (cấu hình 1 lần) ---
+  apiBaseUrl       String         @map("api_base_url")
+  partnerCode      String         @default("MQ_WEB") @map("partner_code")
+  secretRef        String         @map("secret_ref")              // tên biến trong vault, KHÔNG lưu khóa
+  timeoutMs        Int            @default(5000) @map("timeout_ms")
+  health           String         @default("UNKNOWN")             // OK | DEGRADED | DOWN | UNKNOWN
+  lastOkAt         DateTime?      @map("last_ok_at")
+  // --- tài khoản nhận tiền của cơ sở (mỗi cơ sở 1 tài khoản, cấu hình 1 lần) ---
+  payProvider      String         @default("SEPAY") @map("pay_provider")
+  bankCode         String?        @map("bank_code")               // mã ngân hàng VietQR (VCB, BIDV...)
+  bankAccountNo    String?        @map("bank_account_no")
+  bankAccountName  String?        @map("bank_account_name")
+  webhookKeyRef    String?        @map("webhook_key_ref")         // tên biến chứa khóa webhook SePay của cơ sở, KHÔNG lưu khóa
+  // --- chính sách đặt khám của web ---
+  bookingMode      BookingMode    @default(SPECIALTY) @map("booking_mode") // chọn theo chuyên khoa hay theo bác sĩ
+  allowBhyt        Boolean        @default(false) @map("allow_bhyt")
+  allowSameDay     Boolean        @default(false) @map("allow_same_day")
+  payOptions       PayMethod[]    @default([ONLINE, AT_FACILITY]) @map("pay_options")
+  cancelCutoff     String         @default("D-1 15:00") @map("cancel_cutoff")
+  reconcileTime    String         @default("21:00") @map("reconcile_time")
+  featured         Boolean        @default(false)
+  sortOrder        Int            @default(0) @map("sort_order")
+  status           FacilityStatus @default(ACTIVE)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  appointments Appointment[]
+  payments     Payment[]
+  outbox       HisOutbox[]
+  syncLogs     SyncLog[]
+  reconciles   ReconcileBatch[]
+  reviews      Review[]
+  staff        AdminUser[]
+
+  @@map("facility")
+}
+
+// =====================================================================
+// 3. ĐẶT KHÁM, THANH TOÁN, ĐỐI SOÁT
+// (lịch đang chọn dở + giữ chỗ nằm trong Redis có TTL, không có bảng)
+// =====================================================================
+
+enum ObjectType {
+  DICH_VU
+  BHYT
+}
+
+enum BookingApi {
+  PAID     // Booking/PostBooking
+  UNPAID   // Booking/PostBooking_Unpaid
+}
+
+enum AppointmentStatus {
+  CHO_THANH_TOAN
+  QUA_HAN
+  DA_THANH_TOAN
+  DANG_GUI_HIS
+  LOI_HIS
+  DA_CO_STT
+  DA_KHAM
+  DA_HUY
+  CHO_HOAN_TIEN
+  DA_HOAN_TIEN
+}
+
+model Appointment {
+  id            String            @id @default(uuid()) @db.Uuid
+  code          String            @unique                 // MQ7F3K9A
+  hisId         BigInt            @unique @map("his_id")  // booking.id gửi HIS (chống trùng)
+  accountId     String            @map("account_id") @db.Uuid
+  facilityId    String            @map("facility_id") @db.Uuid
+  maBN          String?           @map("ma_bn")           // MaBN tại cơ sở lúc đặt (null = bệnh nhân mới)
+  isNewPatient  Boolean           @default(false) @map("is_new_patient")
+  // ảnh chụp thông tin lấy từ ApiDatKham lúc đặt – để hiển thị phiếu, không cần gọi lại API
+  specialtyHisId String           @map("specialty_his_id")
+  specialtyName String            @map("specialty_name")
+  doctorHisId   String?           @map("doctor_his_id")
+  doctorName    String?           @map("doctor_name")
+  roomHisId     Int               @map("room_his_id")
+  roomName      String            @map("room_name")
+  examDate      DateTime          @map("exam_date") @db.Date
+  slotHisId     Int?              @map("slot_his_id")
+  slotLabel     String            @map("slot_label")       // 07:00–08:00
+  bookingNumber Int               @map("booking_number")
+  objectType    ObjectType        @map("object_type")
+  payMethod     PayMethod         @map("pay_method")
+  bookingApi    BookingApi        @map("booking_api")
+  amount        Decimal           @db.Decimal(12, 0)
+  status        AppointmentStatus
+  stt           Int?
+  sttAt         DateTime?         @map("stt_at")
+  hisBookingId  String?           @map("his_booking_id")   // IDDK (Unpaid) / id (PostBooking)
+  hisError      String?           @map("his_error")
+  checkedInAt   DateTime?         @map("checked_in_at")
+  paidAt        DateTime?         @map("paid_at")
+  cancelledAt   DateTime?         @map("cancelled_at")
+  cancelReason  String?           @map("cancel_reason")
+  cancelRequest Boolean           @default(false) @map("cancel_request") // HIS từ chối -46
+  reconciledAt  DateTime?         @map("reconciled_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  account  PatientAccount      @relation(fields: [accountId], references: [id])
+  facility Facility            @relation(fields: [facilityId], references: [id])
+  payment  Payment?
+  outbox   HisOutbox[]
+  events   AppointmentEvent[]
+  review   Review?
+
+  @@index([facilityId, examDate])
+  @@index([accountId, status])
+  @@index([status])
+  @@map("appointment")
+}
+
+model AppointmentEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  appointmentId String   @map("appointment_id") @db.Uuid
+  fromStatus    String?  @map("from_status")
+  toStatus      String   @map("to_status")
+  actorType     String   @map("actor_type")               // PATIENT | ADMIN | SYSTEM | HIS
+  actorId       String?  @map("actor_id")
+  note          String?
+  at            DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId, at])
+  @@map("appointment_event")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  AMOUNT_MISMATCH
+  UNMATCHED
+  REFUND_PENDING
+  REFUNDED
+}
+
+// Tiền vào tài khoản ngân hàng của TỪNG cơ sở (facility.bank_*); webhook SePay theo cơ sở
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  appointmentId String?       @unique @map("appointment_id") @db.Uuid // null khi UNMATCHED
+  facilityId    String        @map("facility_id") @db.Uuid    // cơ sở nhận tiền (xác định từ URL webhook)
+  orderCode     String?       @unique @map("order_code")
+  amount        Decimal       @db.Decimal(12, 0)
+  paidAmount    Decimal?      @map("paid_amount") @db.Decimal(12, 0)
+  provider      String        @default("SEPAY")
+  providerTxnId String?       @unique @map("provider_txn_id")
+  bankRef       String?       @map("bank_ref")
+  status        PaymentStatus
+  paidAt        DateTime?     @map("paid_at")
+  refundedAt    DateTime?     @map("refunded_at")
+  refundRef     String?       @map("refund_ref")
+  refundBy      String?       @map("refund_by") @db.Uuid
+  refundApprovedBy String?    @map("refund_approved_by") @db.Uuid
+  rawWebhook    Json?         @map("raw_webhook")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  facility    Facility     @relation(fields: [facilityId], references: [id])
+
+  @@index([facilityId, status])
+  @@map("payment")
+}
+
+model HisOutbox {
+  id            String    @id @default(uuid()) @db.Uuid
+  facilityId    String    @map("facility_id") @db.Uuid
+  appointmentId String    @map("appointment_id") @db.Uuid
+  command       String                                    // POST_BOOKING | POST_BOOKING_UNPAID | DEL_BOOKING | COMPLETE_PAYMENT
+  attempts      Int       @default(0)
+  lastError     String?   @map("last_error")
+  nextRunAt     DateTime  @map("next_run_at")
+  doneAt        DateTime? @map("done_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  facility    Facility    @relation(fields: [facilityId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([facilityId, doneAt, nextRunAt])
+  @@map("his_outbox")
+}
+
+model SyncLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  facilityId String   @map("facility_id") @db.Uuid
+  job        String                                       // HEALTH | STATUS | RECONCILE
+  ok         Boolean
+  updated    Int      @default(0)
+  error      String?
+  durationMs Int      @map("duration_ms")
+  at         DateTime @default(now())
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@index([facilityId, job, at])
+  @@map("sync_log")
+}
+
+model ReconcileBatch {
+  id            String    @id @default(uuid()) @db.Uuid
+  facilityId    String    @map("facility_id") @db.Uuid
+  examDate      DateTime  @map("exam_date") @db.Date
+  matched       Int       @default(0)
+  missingInHis  Int       @default(0) @map("missing_in_his")
+  missingInWeb  Int       @default(0) @map("missing_in_web")
+  statusChanged Int       @default(0) @map("status_changed")
+  amountDiff    Int       @default(0) @map("amount_diff")
+  detail        Json?
+  startedAt     DateTime  @map("started_at")
+  finishedAt    DateTime? @map("finished_at")
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@unique([facilityId, examDate])
+  @@map("reconcile_batch")
+}
+
+// =====================================================================
+// 4. NỘI DUNG (CMS)
+// =====================================================================
+
+enum PublishStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+model PostCategory {
+  id        String @id @default(uuid()) @db.Uuid
+  slug      String @unique
+  name      String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  posts Post[]
+
+  @@map("post_category")
+}
+
+model Post {
+  id           String        @id @default(uuid()) @db.Uuid
+  slug         String        @unique
+  title        String
+  excerpt      String?
+  coverUrl     String?       @map("cover_url")
+  contentJson  Json          @map("content_json")
+  categoryId   String        @map("category_id") @db.Uuid
+  tags         String[]
+  facilityIds  String[]      @map("facility_ids")
+  specialtyTags String[]     @map("specialty_tags")            // tên chuyên khoa dạng thẻ (không còn bảng chuyên khoa)
+  authorName   String?       @map("author_name")
+  reviewerName String?       @map("reviewer_name")
+  status       PublishStatus @default(DRAFT)
+  publishedAt  DateTime?     @map("published_at")
+  seoTitle     String?       @map("seo_title")
+  seoDesc      String?       @map("seo_desc")
+  views        Int           @default(0)
+  createdBy    String        @map("created_by") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  category PostCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([status, publishedAt])
+  @@map("post")
+}
+
+model PageBlock {
+  id        String        @id @default(uuid()) @db.Uuid
+  page      String                                         // HOME | ...
+  type      String                                         // HERO | BANNER | SERVICES | FACILITIES ...
+  data      Json
+  sortOrder Int           @map("sort_order")
+  active    Boolean       @default(true)
+  status    PublishStatus @default(DRAFT)
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@index([page, status, sortOrder])
+  @@map("page_block")
+}
+
+model Banner {
+  id             String    @id @default(uuid()) @db.Uuid
+  placement      String
+  imageUrl       String    @map("image_url")
+  imageMobileUrl String?   @map("image_mobile_url")
+  title          String?
+  link           String?
+  startAt        DateTime? @map("start_at")
+  endAt          DateTime? @map("end_at")
+  sortOrder      Int       @default(0) @map("sort_order")
+  active         Boolean   @default(true)
+
+  @@map("banner")
+}
+
+model Popup {
+  id        String    @id @default(uuid()) @db.Uuid
+  imageUrl  String    @map("image_url")
+  link      String?
+  pages     String[]
+  frequency String                                         // ONCE_SESSION | ONCE_DAY
+  startAt   DateTime? @map("start_at")
+  endAt     DateTime? @map("end_at")
+  active    Boolean   @default(true)
+
+  @@map("popup")
+}
+
+model StaticPage {
+  id               String        @id @default(uuid()) @db.Uuid
+  slug             String        @unique
+  title            String
+  contentJson      Json          @map("content_json")
+  version          String
+  effectiveAt      DateTime      @map("effective_at")
+  requireReconsent Boolean       @default(false) @map("require_reconsent")
+  status           PublishStatus @default(DRAFT)
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@map("static_page")
+}
+
+model FaqItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  groupName String  @map("group_name")
+  question  String
+  answer    Json
+  sortOrder Int     @default(0) @map("sort_order")
+  active    Boolean @default(true)
+
+  @@map("faq_item")
+}
+
+model MenuItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  location  String                                         // HEADER | FOOTER_COL_1 ...
+  parentId  String? @map("parent_id") @db.Uuid
+  label     String
+  href      String
+  sortOrder Int     @default(0) @map("sort_order")
+  active    Boolean @default(true)
+
+  parent   MenuItem?  @relation("MenuTree", fields: [parentId], references: [id])
+  children MenuItem[] @relation("MenuTree")
+
+  @@map("menu_item")
+}
+
+model Media {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique                                // đường dẫn tương đối trong STORAGE_DIR, URL = /uploads/<key>
+  url       String
+  mime      String
+  size      Int
+  width     Int?
+  height    Int?
+  alt       String?
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("media")
+}
+
+model ContentVersion {
+  id        String   @id @default(uuid()) @db.Uuid
+  entity    String
+  entityId  String   @map("entity_id")
+  data      Json
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([entity, entityId, createdAt])
+  @@map("content_version")
+}
+
+// =====================================================================
+// 5. TƯƠNG TÁC: ĐÁNH GIÁ, LIÊN HỆ, GÓP Ý
+// =====================================================================
+
+model Review {
+  id            String   @id @default(uuid()) @db.Uuid
+  facilityId    String   @map("facility_id") @db.Uuid
+  accountId     String   @map("account_id") @db.Uuid
+  appointmentId String   @unique @map("appointment_id") @db.Uuid
+  rating        Int
+  comment       String?
+  status        String   @default("PENDING")               // PENDING | SHOWN | HIDDEN
+  reply         String?
+  showOnHome    Boolean  @default(false) @map("show_on_home")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  facility    Facility       @relation(fields: [facilityId], references: [id])
+  account     PatientAccount @relation(fields: [accountId], references: [id])
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+
+  @@index([facilityId, status])
+  @@map("review")
+}
+
+model ContactLead {
+  id        String   @id @default(uuid()) @db.Uuid
+  type      String                                          // CO_SO | PHONG_MACH | QUANG_CAO | KHAC
+  org       String
+  name      String
+  phone     String
+  email     String
+  message   String
+  status    String   @default("NEW")
+  assignee  String?  @db.Uuid
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_lead")
+}
+
+model Feedback {
+  id            String   @id @default(uuid()) @db.Uuid
+  accountId     String   @map("account_id") @db.Uuid
+  topic         String
+  message       String
+  appointmentId String?  @map("appointment_id") @db.Uuid
+  status        String   @default("NEW")
+  assignee      String?  @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  account PatientAccount @relation(fields: [accountId], references: [id])
+
+  @@map("feedback")
+}
+
+// =====================================================================
+// 6. QUẢN TRỊ & HỆ THỐNG
+// =====================================================================
+
+model AdminRole {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique                              // SUPER_ADMIN, OPERATOR, EDITOR...
+  permissions String[]
+
+  users AdminUser[]
+
+  @@map("admin_role")
+}
+
+model AdminUser {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  name          String
+  passwordHash  String    @map("password_hash")
+  totpSecretEnc String    @map("totp_secret_enc")
+  roleId        String    @map("role_id") @db.Uuid
+  facilityId    String?   @map("facility_id") @db.Uuid      // null = toàn hệ thống
+  active        Boolean   @default(true)
+  failedCount   Int       @default(0) @map("failed_count")
+  lockedUntil   DateTime? @map("locked_until")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  role     AdminRole      @relation(fields: [roleId], references: [id])
+  facility Facility?      @relation(fields: [facilityId], references: [id])
+  sessions AdminSession[]
+
+  @@map("admin_user")
+}
+
+model AdminSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  ipHash    String    @map("ip_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_session")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorType  String   @map("actor_type")                    // PATIENT | ADMIN | SYSTEM
+  actorId    String   @map("actor_id")
+  action     String                                         // LOGIN, IDENTIFY, VIEW_RECORD, BOOK, CANCEL, REFUND, CONFIG_CHANGE...
+  module     String
+  facilityId String?  @map("facility_id") @db.Uuid
+  target     String?                                        // MaBN băm, mã phiếu...
+  diff       Json?
+  ipHash     String?  @map("ip_hash")
+  at         DateTime @default(now())
+
+  @@index([module, at])
+  @@index([facilityId, at])
+  @@index([actorType, actorId, at])
+  @@map("audit_log")
+}
+
+model EmailTemplate {
+  code      String   @id                                     // ACCOUNT_CREATED, BOOKING_SUCCESS...
+  subject   String
+  bodyJson  Json     @map("body_json")
+  updatedBy String?  @map("updated_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_template")
+}
+
+model EmailLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  template  String
+  toHash    String   @map("to_hash")                          // không lưu email rõ + nội dung có mật khẩu
+  status    String                                            // QUEUED | SENT | FAILED
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([template, createdAt])
+  @@map("email_log")
+}
+
+model SystemSetting {
+  key       String   @id                                      // brand, contact, seo, auth, booking, maintenance...
+  value     Json
+  updatedBy String?  @map("updated_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_setting")
+}
+
+model SearchLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  keyword   String
+  results   Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([keyword])
+  @@map("search_log")
+}

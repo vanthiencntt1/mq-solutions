@@ -1,0 +1,28 @@
+# Hạ tầng cho dev local: pnpm dev chạy ngoài Docker, các dịch vụ dưới đây chạy trong Docker.
+# Tệp tải lên lưu ở thư mục ./storage của dự án (không cần dịch vụ riêng).
+# docker compose -f docker/docker-compose.dev.yml up -d
+name: mq-dev
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mq
+      POSTGRES_PASSWORD: mq
+      POSTGRES_DB: mq_solutions
+    ports: ['5434:5432'] # máy đã có Postgres khác ở 5432 nên dùng 5434
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mq -d mq_solutions']
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['6380:6379'] # tránh trùng Redis khác ở 6379
+    volumes: [redisdata:/data]
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ['1025:1025', '8025:8025'] # SMTP 1025, giao diện xem mail http://localhost:8025
+volumes:
+  pgdata:
+  redisdata:

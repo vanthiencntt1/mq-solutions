@@ -1,0 +1,53 @@
+import Link from 'next/link';
+import { ChevronRight, House } from 'lucide-react';
+
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+export function Breadcrumb({
+  items,
+  baseUrl = 'http://localhost:3000',
+}: {
+  items: BreadcrumbItem[];
+  baseUrl?: string;
+}) {
+  const trail: BreadcrumbItem[] = [{ label: 'Trang chủ', href: '/' }, ...items];
+  const structuredData = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.label,
+      ...(item.href ? { item: new URL(item.href, baseUrl).toString() } : {}),
+    })),
+  }).replace(/</g, '\\u003c');
+
+  return (
+    <>
+      <nav aria-label="Đường dẫn trang" className="text-body-sm text-slate-gray py-4">
+        <ol className="flex flex-wrap items-center gap-2">
+          {trail.map((item, index) => (
+            <li key={`${item.href ?? item.label}-${index}`} className="flex items-center gap-2">
+              {index > 0 && <ChevronRight className="text-mist-gray size-4" aria-hidden />}
+              {item.href && index < trail.length - 1 ? (
+                <Link href={item.href} className="text-ink-navy hover:underline">
+                  {index === 0 && <House className="mr-1 inline size-4" aria-hidden />}
+                  {item.label}
+                </Link>
+              ) : (
+                <span className="text-ink-navy font-medium" aria-current="page">
+                  {item.label}
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+      {/* W01 mục 7: ký tự '<' được escape trước khi đưa dữ liệu đường dẫn vào JSON-LD. */}
+      <script type="application/ld+json">{structuredData}</script>
+    </>
+  );
+}

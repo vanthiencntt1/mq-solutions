@@ -1,0 +1,128 @@
+// Giá trị mặc định khi admin chưa cấu hình menu_item / system_setting (W01, A04, A11).
+
+export const SITE = {
+  name: 'MQ Solutions',
+  tagline: 'Đặt khám nhanh tại các cơ sở y tế',
+  hotline: '1900 0000',
+  email: 'hotro@mqsolutions.vn',
+  address: '',
+  taxCode: '',
+  zaloUrl: '',
+  facebookUrl: '',
+  youtubeUrl: '',
+  tiktokUrl: '',
+} as const;
+
+export interface NavItem {
+  href: string;
+  label: string;
+  children?: NavItem[];
+}
+
+export interface PublicShell {
+  name: string;
+  logoUrl?: string;
+  tagline: string;
+  hotline: string;
+  email: string;
+  address: string;
+  taxCode: string;
+  zaloUrl: string;
+  facebookUrl: string;
+  youtubeUrl: string;
+  tiktokUrl: string;
+  termsVersion?: string;
+  privacyVersion?: string;
+  announcement?: { text: string; href?: string };
+  mainNav: NavItem[];
+  footerColumns: { title: string; links: NavItem[] }[];
+}
+
+export const MAIN_NAV: NavItem[] = [
+  {
+    href: '/co-so-y-te',
+    label: 'Cơ sở y tế',
+    children: [
+      { href: '/co-so-y-te', label: 'Tất cả cơ sở' },
+      { href: '/co-so-y-te/benh-vien', label: 'Bệnh viện' },
+      { href: '/co-so-y-te/phong-kham', label: 'Phòng khám' },
+    ],
+  },
+  {
+    href: '/dat-kham',
+    label: 'Đặt khám',
+    children: [
+      { href: '/co-so-y-te', label: 'Theo cơ sở' },
+      { href: '/chuyen-khoa', label: 'Theo chuyên khoa' },
+      { href: '/bac-si', label: 'Theo bác sĩ' },
+    ],
+  },
+  { href: '/tin-tuc', label: 'Tin tức' },
+  {
+    href: '/huong-dan',
+    label: 'Hướng dẫn',
+    children: [
+      { href: '/huong-dan', label: 'Tất cả hướng dẫn' },
+      { href: '/huong-dan/quy-trinh-di-kham', label: 'Quy trình đi khám' },
+      { href: '/huong-dan/cau-hoi-thuong-gap', label: 'Câu hỏi thường gặp' },
+    ],
+  },
+  { href: '/hop-tac', label: 'Hợp tác' },
+];
+
+export const ACCOUNT_NAV: NavItem[] = [
+  { href: '/tai-khoan', label: 'Tổng quan' },
+  { href: '/tai-khoan/phieu-kham', label: 'Phiếu khám' },
+  { href: '/tai-khoan/co-so', label: 'Hồ sơ tại cơ sở' },
+  { href: '/tai-khoan/thong-bao', label: 'Thông báo' },
+  { href: '/tai-khoan/gop-y', label: 'Góp ý' },
+  { href: '/tai-khoan/thong-tin', label: 'Thông tin cá nhân' },
+  { href: '/tai-khoan/doi-mat-khau', label: 'Đổi mật khẩu' },
+];
+
+export const ADMIN_NAV: (NavItem & { doc: string })[] = [
+  { href: '/admin', label: 'Tổng quan', doc: 'A10' },
+  { href: '/admin/co-so', label: 'Cơ sở y tế', doc: 'A02' },
+  { href: '/admin/danh-muc', label: 'Danh mục khám', doc: 'A03' },
+  { href: '/admin/lich-dat', label: 'Lịch đặt & phiếu khám', doc: 'A06' },
+  { href: '/admin/check-in', label: 'Check-in QR', doc: 'A06' },
+  { href: '/admin/thanh-toan', label: 'Thanh toán & đối soát', doc: 'A07' },
+  { href: '/admin/benh-nhan', label: 'Tài khoản bệnh nhân', doc: 'A05' },
+  { href: '/admin/noi-dung', label: 'Nội dung', doc: 'A04' },
+  { href: '/admin/thong-bao', label: 'Thông báo & email', doc: 'A08' },
+  { href: '/admin/danh-gia', label: 'Đánh giá, liên hệ', doc: 'A09' },
+  { href: '/admin/bao-cao', label: 'Báo cáo & giám sát', doc: 'A10' },
+  { href: '/admin/nguoi-dung', label: 'Người dùng admin', doc: 'A01' },
+  { href: '/admin/cau-hinh', label: 'Cấu hình hệ thống', doc: 'A11' },
+];
+
+export const FOOTER_COLUMNS: { title: string; links: NavItem[] }[] = [
+  {
+    title: 'Dịch vụ',
+    links: [
+      { href: '/co-so-y-te', label: 'Đặt khám tại cơ sở' },
+      { href: '/chuyen-khoa', label: 'Đặt khám theo chuyên khoa' },
+      { href: '/bac-si', label: 'Đặt khám theo bác sĩ' },
+      { href: '/tai-khoan/co-so', label: 'Tra cứu hồ sơ khám' },
+    ],
+  },
+  {
+    title: 'Hướng dẫn & hỗ trợ',
+    links: [
+      { href: '/huong-dan', label: 'Hướng dẫn đặt khám' },
+      { href: '/huong-dan/quy-trinh-di-kham', label: 'Quy trình đi khám' },
+      { href: '/huong-dan/huy-phieu', label: 'Hủy phiếu' },
+      { href: '/huong-dan/hoan-phi', label: 'Hoàn phí' },
+      { href: '/huong-dan/cau-hoi-thuong-gap', label: 'Câu hỏi thường gặp' },
+    ],
+  },
+  {
+    title: 'Về MQ',
+    links: [
+      { href: '/hop-tac', label: 'Liên hệ hợp tác' },
+      { href: '/chinh-sach/dieu-khoan-su-dung', label: 'Điều khoản sử dụng' },
+      { href: '/chinh-sach/chinh-sach-bao-mat', label: 'Chính sách bảo mật' },
+      { href: '/chinh-sach/quy-dinh-huy-hoan-tien', label: 'Quy định hủy, hoàn tiền' },
+    ],
+  },
+];

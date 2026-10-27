@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+
+/*
+ * Token giao diện MQ Solutions – 00-CONG-NGHE-QUY-UOC mục 10 (nguồn DESIGN.md).
+ * Đổi màu thương hiệu chỉ đổi --primary (+ --primary-hover). Không viết mã màu trực tiếp trong component.
+ */
+
+@theme {
+  /* Màu gốc (10.2) */
+  --color-ink-navy: #0b3558;
+  --color-signal-blue: #006bff;
+  --color-slate-gray: #476788;
+  --color-mist-gray: #a6bbd1;
+  --color-cloud: #f8f9fb;
+  --color-paper: #ffffff;
+  --color-pebble: #f0f3f8;
+  --color-hairline: #d4e0ed;
+  --color-deep-cobalt: #004eba;
+  --color-coral-magenta: #e55cff;
+  --color-sky-cyan: #0099ff;
+
+  /* Màu trạng thái (MQ bổ sung) */
+  --color-success: #0f7b4f;
+  --color-success-bg: #e7f6ef;
+  --color-warning: #a15c00;
+  --color-warning-bg: #fff4e0;
+  --color-danger: #c62828;
+  --color-danger-bg: #fdecec;
+  --color-info: #004eba;
+  --color-info-bg: #e6f0ff;
+
+  /* Màu ngữ nghĩa – component chỉ dùng nhóm này */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Chữ (10.3) – Be Vietnam Pro tự host qua @fontsource */
+  --font-sans:
+    var(--font-be-vietnam), 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 1.5;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.4;
+  --text-body: 16px;
+  --text-body--line-height: 1.5;
+  --text-body-lg: 20px;
+  --text-body-lg--line-height: 1.5;
+  --text-subheading: 28px;
+  --text-subheading--line-height: 1.4;
+  --text-heading-sm: 38px;
+  --text-heading-sm--line-height: 1.21;
+  --text-heading: 50px;
+  --text-heading--line-height: 1.2;
+  --text-heading-lg: 68px;
+  --text-heading-lg--line-height: 1.2;
+  --text-display: 80px;
+  --text-display--line-height: 1.2;
+
+  /* Bo góc (10.5) */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+
+  /* Bóng gốc xanh (10.5) */
+  --shadow-sm:
+    rgba(71, 103, 136, 0.04) 0px 4px 5px 0px, rgba(71, 103, 136, 0.03) 0px 4px 10px 0px,
+    rgba(71, 103, 136, 0.05) 0px 10px 20px 0px;
+  --shadow-md:
+    rgba(71, 103, 136, 0.04) 0px 4px 5px 0px, rgba(71, 103, 136, 0.03) 0px 8px 15px 0px,
+    rgba(71, 103, 136, 0.06) 0px 15px 30px 0px;
+  --shadow-lg:
+    rgba(71, 103, 136, 0.04) 0px 4px 5px 0px, rgba(71, 103, 136, 0.03) 0px 8px 15px 0px,
+    rgba(71, 103, 136, 0.08) 0px 30px 50px 0px;
+
+  /* Bố cục (10.4) */
+  --container-page: 1200px;
+}
+
+/* Ánh xạ biến shadcn/ui (10.9) */
+:root {
+  --background: #f8f9fb;
+  --foreground: #0b3558;
+  --card: #ffffff;
+  --card-foreground: #0b3558;
+  --primary: #006bff;
+  --primary-hover: #004eba;
+  --primary-foreground: #ffffff;
+  --secondary: #0b3558;
+  --secondary-foreground: #ffffff;
+  --muted: #f0f3f8;
+  --muted-foreground: #476788;
+  --accent: #e6f0ff;
+  --accent-foreground: #004eba;
+  --destructive: #c62828;
+  --border: #d4e0ed;
+  --input: #d4e0ed;
+  --ring: #006bff;
+  --radius: 8px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground text-body font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-ink-navy font-bold;
+  }
+  :focus-visible {
+    @apply ring-ring/40 ring-3 outline-none;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-(--container-page) px-4 md:px-6;
+  }
+}

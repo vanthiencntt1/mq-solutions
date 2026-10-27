@@ -1,0 +1,23 @@
+# CI (00-CONG-NGHE-QUY-UOC mục 11): install → lint → typecheck → test → build → audit
+name: CI
+on:
+  push: { branches: [main, develop] }
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: http://localhost:3000
+      DATABASE_URL: postgresql://mq:mq@localhost:5432/mq_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm audit --audit-level high
