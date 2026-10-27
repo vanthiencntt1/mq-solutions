@@ -54,6 +54,71 @@ async function main() {
     console.log(`[seed] TOTP: ${authenticator.keyuri(adminEmail, 'MQ Solutions', totpSecret)}\n`);
   }
 
+  // 4 bệnh viện thật dùng ApiDatKham của MQ. URL mặc định là IP nội bộ (máy chủ web đặt trong mạng BV);
+  // máy dev ngoài mạng ghi đè bằng HIS_URL_<MÃ> trong .env (ví dụ http://mqsoft.ddns.net:<port>).
+  // Khóa 3DES nằm trong biến HIS_KEY_<MÃ>, không nằm trong code/DB.
+  const realFacilities = [
+    {
+      code: 'BVAB',
+      slug: 'benh-vien-an-binh',
+      name: 'Bệnh viện An Bình',
+      port: 9001,
+      address: '146 An Bình, Phường 7, Quận 5, TP. Hồ Chí Minh',
+    },
+    {
+      code: 'BVTD',
+      slug: 'benh-vien-da-khoa-thu-duc',
+      name: 'Bệnh viện đa khoa Thủ Đức',
+      port: 9002,
+      address: '29 Phú Châu, Phường Tam Phú, TP. Thủ Đức, TP. Hồ Chí Minh',
+    },
+    {
+      code: 'BVNB',
+      slug: 'benh-vien-da-khoa-nha-be',
+      name: 'Bệnh viện đa khoa Nhà Bè',
+      port: 9003,
+      address: '281A Lê Văn Lương, Xã Phước Kiển, Huyện Nhà Bè, TP. Hồ Chí Minh',
+    },
+    {
+      code: 'BVCC',
+      slug: 'benh-vien-da-khoa-cu-chi',
+      name: 'Bệnh viện đa khoa Củ Chi',
+      port: 9004,
+      address: '1307 Tỉnh lộ 7, Ấp Chợ Cũ 2, Xã An Nhơn Tây, Huyện Củ Chi, TP. Hồ Chí Minh',
+    },
+  ];
+  for (const [i, f] of realFacilities.entries()) {
+    const apiBaseUrl = process.env[`HIS_URL_${f.code}`] || `http://192.168.1.250:${f.port}`;
+    await prisma.facility.upsert({
+      where: { code: f.code },
+      // Chạy seed lại chỉ cập nhật URL kết nối; các thông tin admin đã sửa ở A02 được giữ nguyên.
+      update: { apiBaseUrl },
+      create: {
+        code: f.code,
+        slug: f.slug,
+        name: f.name,
+        type: 'BV_CONG',
+        provinceName: 'TP. Hồ Chí Minh',
+        address: f.address,
+        workingHours: { 'T2-T6': '07:00-16:30', T7: '07:00-11:30' },
+        apiBaseUrl,
+        secretRef: `HIS_KEY_${f.code}`,
+        bookingMode: 'SPECIALTY',
+        allowBhyt: false,
+        // Chưa có tài khoản ngân hàng/SePay của BV → chỉ thanh toán tại quầy cho tới khi admin cấu hình ở A02
+        payOptions: ['AT_FACILITY'],
+        featured: true,
+        sortOrder: i,
+      },
+    });
+  }
+
+  // Cơ sở mẫu trỏ tới mock ApiDatKham: chỉ tạo khi SEED_MOCK_FACILITIES=true (máy dev/test)
+  if (process.env.SEED_MOCK_FACILITIES !== 'true') {
+    await seedSettings();
+    console.log('[seed] xong: vai trò, admin, 4 bệnh viện, cấu hình hệ thống');
+    return;
+  }
   const mockBase = `http://localhost:${process.env.MOCK_HIS_PORT ?? 4010}`;
   const facilities = [
     {
@@ -88,12 +153,17 @@ async function main() {
         bankAccountNo: `000000000${i + 1}`,
         bankAccountName: f.name.toUpperCase(),
         webhookKeyRef: `SEPAY_WEBHOOK_KEY_${f.code}`,
-        featured: true,
-        sortOrder: i,
+        featured: false,
+        sortOrder: 100 + i,
       },
     });
   }
 
+  await seedSettings();
+  console.log('[seed] xong: vai trò, admin, 4 bệnh viện + 2 cơ sở mẫu, cấu hình hệ thống');
+}
+
+async function seedSettings() {
   const settings: Record<string, unknown> = {
     brand: { name: 'MQ Solutions', primaryColor: '#006bff' },
     contact: { hotline: '1900 0000', email: 'hotro@mqsolutions.vn' },
@@ -108,8 +178,6 @@ async function main() {
       create: { key, value: value as object },
     });
   }
-
-  console.log('[seed] xong: vai trò, admin, 2 cơ sở mẫu, cấu hình hệ thống');
 }
 
 main()

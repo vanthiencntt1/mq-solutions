@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { decrypt3DES, encrypt3DES } from '../../../lib/infra/his/crypto';
 import {
   DOCTORS,
@@ -72,7 +73,10 @@ const extraLoaded = Promise.all(
   readdirSync(join(__dirname, 'routes'))
     .filter((f) => f.endsWith('.ts'))
     .map(async (f) => {
-      const mod = (await import(join(__dirname, 'routes', f))) as { routes?: Record<string, Handler> };
+      // Windows cần URL file:// cho import() động
+      const mod = (await import(pathToFileURL(join(__dirname, 'routes', f)).href)) as {
+        routes?: Record<string, Handler>;
+      };
       Object.assign(EXTRA, mod.routes ?? {});
     }),
 );

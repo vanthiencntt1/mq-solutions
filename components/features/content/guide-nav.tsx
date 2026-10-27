@@ -3,8 +3,11 @@ import type { PublicPage } from '@/lib/domain/content/types';
 
 export function GuideNav({ pages, current }: { pages: PublicPage[]; current?: string }) {
   return (
-    <nav aria-label="Các mục hướng dẫn" className="border-hairline bg-paper rounded-xl border p-4 shadow-sm">
-      <h2 className="mb-3 text-[18px]">Nội dung hướng dẫn</h2>
+    <nav
+      aria-label="Các mục hướng dẫn"
+      className="border-hairline bg-paper h-fit rounded-2xl border p-5 shadow-sm lg:sticky lg:top-24"
+    >
+      <p className="text-ink-navy mb-3 text-xl font-bold">Nội dung hướng dẫn</p>
       <ul className="space-y-1">
         {pages.map((page) => {
           const slug = page.slug.replace(/^huong-dan-/, '');
@@ -13,13 +16,22 @@ export function GuideNav({ pages, current }: { pages: PublicPage[]; current?: st
               <Link
                 href={`/huong-dan/${slug}`}
                 aria-current={slug === current ? 'page' : undefined}
-                className={`text-body-sm block rounded-lg px-3 py-2 ${slug === current ? 'bg-info-bg text-deep-cobalt font-semibold' : 'hover:bg-pebble'}`}
+                className={`flex min-h-11 items-center rounded-lg px-3 py-2 text-sm ${slug === current ? 'bg-info-bg text-primary font-semibold' : 'text-ink-navy hover:bg-pebble'}`}
               >
                 {page.title}
               </Link>
             </li>
           );
         })}
+        <li>
+          <Link
+            href="/huong-dan/cau-hoi-thuong-gap"
+            aria-current={current === 'cau-hoi-thuong-gap' ? 'page' : undefined}
+            className={`flex min-h-11 items-center rounded-lg px-3 py-2 text-sm ${current === 'cau-hoi-thuong-gap' ? 'bg-info-bg text-primary font-semibold' : 'text-ink-navy hover:bg-pebble'}`}
+          >
+            Câu hỏi thường gặp
+          </Link>
+        </li>
       </ul>
     </nav>
   );

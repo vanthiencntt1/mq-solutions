@@ -42,14 +42,14 @@ export default async function Page({ params }: Props) {
   ]);
   if (!page && parsed.data !== 'cau-hoi-thuong-gap') notFound();
   return (
-    <div className="container-page py-10 md:py-16">
+    <main className="container-page py-12 md:py-16">
       <Link href="/huong-dan" className="text-deep-cobalt mb-8 inline-block font-semibold">
         ← Hướng dẫn & hỗ trợ
       </Link>
       <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
         <GuideNav pages={pages} current={parsed.data} />
-        <div className="max-w-3xl">
-          <h1 className="mb-8 text-[32px] leading-tight md:text-[50px]">
+        <div className="max-w-[720px] min-w-0">
+          <h1 className="mb-8 text-[42px] leading-tight md:text-[50px]">
             {page?.title ?? 'Câu hỏi thường gặp'}
           </h1>
           {page ? (
@@ -67,12 +67,12 @@ export default async function Page({ params }: Props) {
                   })),
                 }}
               />
-              <FaqList items={faqs} />
+              {faqs.length > 0 && <FaqList items={faqs} />}
             </>
           )}
           <SupportOptions {...getSupportLinks()} />
         </div>
       </div>
-    </div>
+    </main>
   );
 }

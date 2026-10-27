@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { fixedScheduleSchema } from '@/lib/domain/booking/schedule';
+import { ContentBlocksSchema } from '@/lib/domain/content/blocks';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
@@ -14,6 +16,8 @@ export const FacilityUrlSchema = z
     if (url.username || url.password || url.search || url.hash || !['http:', 'https:'].includes(url.protocol))
       return false;
     if (url.protocol === 'https:') return true;
+    // Máy dev ngoài mạng BV gọi HIS qua http://mqsoft.ddns.net:900x; production vẫn bắt buộc HTTPS/IP nội bộ.
+    if (process.env.NODE_ENV === 'development') return true;
     return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(url.hostname);
   }, 'Cần HTTPS hoặc HTTP qua IP nội bộ/VPN');
 
@@ -38,9 +42,12 @@ const fields = {
   logoUrl: imageUrl.nullable(),
   images: z.array(imageUrl).max(12),
   shortDesc: optionalText(500),
+  // Trang công khai nhận cả 2 dạng: khối nội dung đầy đủ (W06, scripts/seed-facility-info) hoặc {type,text}.
   introJson: z
-    .array(z.object({ type: z.string().max(40), text: z.string().max(5000) }))
-    .max(50)
+    .union([
+      ContentBlocksSchema,
+      z.array(z.object({ type: z.string().max(40), text: z.string().max(5000) })).max(50),
+    ])
     .nullable(),
   apiBaseUrl: FacilityUrlSchema,
   partnerCode: z
@@ -62,6 +69,9 @@ const fields = {
   bookingMode: z.enum(['SPECIALTY', 'DOCTOR', 'BOTH']),
   allowBhyt: z.boolean(),
   allowSameDay: z.boolean(),
+  // Không dùng .default(): zod 4 vẫn điền default trong .partial() → lưu form sẽ reset về HIS.
+  scheduleSource: z.enum(['HIS', 'FIXED']),
+  fixedSchedule: fixedScheduleSchema.nullable(),
   payOptions: z
     .array(z.enum(['ONLINE', 'AT_FACILITY']))
     .min(1)

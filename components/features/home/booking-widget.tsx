@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { ArrowRight, Building2, MapPin } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { HomeFacility } from './types';
 
+/** Lối vào đặt khám ngay trên khối đầu trang: chọn bệnh viện → sang bước chọn giờ. */
 export function BookingWidget({
   facilities,
   loadError = false,
@@ -10,61 +11,59 @@ export function BookingWidget({
   facilities: HomeFacility[];
   loadError?: boolean;
 }) {
+  if (loadError) {
+    return (
+      <p role="alert" className="bg-danger-bg text-danger rounded-lg px-4 py-3 text-sm">
+        Chưa tải được danh sách bệnh viện. Tải lại trang sau ít phút, hoặc gọi tổng đài để được đặt giúp.
+      </p>
+    );
+  }
+  if (!facilities.length) {
+    return (
+      <p className="bg-pebble text-slate-gray rounded-lg px-4 py-3 text-sm">
+        Hiện chưa có bệnh viện nhận đặt khám trực tuyến.{' '}
+        <Link href="/co-so-y-te" className="text-ink-navy font-semibold underline underline-offset-4">
+          Xem danh sách cơ sở
+        </Link>
+      </p>
+    );
+  }
   return (
-    <div className="border-border bg-card relative rounded-2xl border p-5 shadow-lg sm:p-8">
-      <div className="bg-info-bg text-info mb-6 inline-flex size-11 items-center justify-center rounded-xl">
-        <Building2 className="size-6" aria-hidden />
-      </div>
-      <h2 className="text-ink-navy text-[24px] leading-snug font-semibold">Bắt đầu từ cơ sở bạn muốn khám</h2>
-      <p className="text-slate-gray mt-2 text-sm">
-        Chọn bệnh viện hoặc phòng khám để xem chuyên khoa và lịch còn trống.
-      </p>
-      {loadError ? (
-        <div role="alert" className="bg-danger-bg text-danger mt-6 rounded-lg p-4 text-sm">
-          Không thể tải danh sách cơ sở lúc này. Vui lòng thử lại sau ít phút.
-        </div>
-      ) : facilities.length ? (
-        <form action="/dat-kham" method="get" className="mt-6 space-y-4">
-          <label htmlFor="home-facility" className="text-ink-navy block text-sm font-semibold">
-            Cơ sở y tế
-          </label>
-          <div className="relative">
-            <MapPin
-              className="text-slate-gray pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2"
-              aria-hidden
-            />
-            <select
-              id="home-facility"
-              name="co-so"
-              required
-              defaultValue=""
-              className="border-input bg-pebble text-ink-navy focus-visible:border-primary h-12 w-full appearance-none rounded-md border pr-3 pl-10"
-            >
-              <option value="" disabled>
-                Chọn cơ sở y tế
+    <form
+      action="/dat-kham"
+      method="get"
+      className="border-hairline bg-card w-full max-w-xl rounded-xl border p-4 shadow-md sm:p-5"
+    >
+      <label htmlFor="home-facility" className="text-ink-navy mb-2 block text-[15px] font-semibold">
+        Bạn muốn khám ở bệnh viện nào?
+      </label>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
+          <select
+            id="home-facility"
+            name="co-so"
+            required
+            defaultValue=""
+            className="border-hairline bg-pebble text-ink-navy focus-visible:border-primary h-12 w-full appearance-none rounded-md border pr-10 pl-3 text-[16px] font-medium"
+          >
+            <option value="" disabled>
+              Chọn bệnh viện
+            </option>
+            {facilities.map((facility) => (
+              <option key={facility.code} value={facility.code}>
+                {facility.name}
               </option>
-              {facilities.map((facility) => (
-                <option key={facility.code} value={facility.code}>
-                  {facility.name} · {facility.provinceName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button type="submit" className="w-full">
-            Xem lịch khám <ArrowRight aria-hidden />
-          </Button>
-        </form>
-      ) : (
-        <div className="bg-muted mt-6 rounded-lg p-4 text-sm">
-          <p className="text-slate-gray">Hiện chưa có cơ sở nhận đặt khám trực tuyến.</p>
-          <Link href="/co-so-y-te" className="text-ink-navy mt-2 inline-block font-semibold underline">
-            Xem danh sách cơ sở
-          </Link>
+            ))}
+          </select>
+          <ChevronDown
+            className="text-slate-gray pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2"
+            aria-hidden
+          />
         </div>
-      )}
-      <p className="text-slate-gray mt-5 text-xs">
-        Không cần chọn ngày ngay. Bạn sẽ xem thông tin trước khi xác nhận.
-      </p>
-    </div>
+        <Button type="submit" size="lg" className="w-full rounded-md sm:w-auto">
+          Xem lịch khám
+        </Button>
+      </div>
+    </form>
   );
 }

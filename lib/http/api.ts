@@ -16,8 +16,10 @@ export function ok<T>(data: T, meta?: PageMeta, init?: ResponseInit) {
 }
 
 export function fail(err: AppError) {
+  // Zod issue có thể chứa input hoặc path do người dùng tạo; client chỉ cần thông báo chung.
+  const details = err.code === 'VALIDATION_FAILED' && Array.isArray(err.details) ? undefined : err.details;
   return NextResponse.json(
-    { error: { code: err.code, message: err.message, ...(err.details ? { details: err.details } : {}) } },
+    { error: { code: err.code, message: err.message, ...(details ? { details } : {}) } },
     { status: err.status },
   );
 }

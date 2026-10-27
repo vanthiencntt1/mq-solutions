@@ -34,7 +34,7 @@ export function ContactForm({ siteKey }: { siteKey?: string }) {
     return (
       <div role="status" className="bg-success-bg rounded-xl p-6 text-center">
         <CheckCircle2 className="text-success mx-auto mb-3 size-10" aria-hidden />
-        <h2 className="text-[22px]">Đã nhận thông tin hợp tác</h2>
+        <h2 className="text-[24px]">Đã nhận thông tin hợp tác</h2>
         <p className="text-slate-gray mt-2">
           Bộ phận phụ trách sẽ liên hệ với bạn qua thông tin đã cung cấp.
         </p>
@@ -47,7 +47,7 @@ export function ContactForm({ siteKey }: { siteKey?: string }) {
         <select
           id="type"
           {...register('type')}
-          className="border-input bg-paper h-11 w-full rounded-md border px-3"
+          className="border-hairline bg-pebble text-ink-navy h-12 w-full rounded-lg border px-3"
         >
           <option value="CO_SO">Cơ sở y tế</option>
           <option value="PHONG_MACH">Phòng mạch</option>
@@ -89,7 +89,7 @@ export function ContactForm({ siteKey }: { siteKey?: string }) {
           rows={5}
           aria-invalid={!!errors.message}
           {...register('message')}
-          className="border-input bg-paper w-full rounded-md border p-3"
+          className="border-hairline bg-pebble text-ink-navy w-full rounded-lg border p-3"
         />
       </FormField>
       <Turnstile siteKey={siteKey} onToken={onToken} />

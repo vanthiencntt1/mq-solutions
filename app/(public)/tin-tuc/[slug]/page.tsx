@@ -81,7 +81,7 @@ export default async function Page({ params, searchParams }: Props) {
     Boolean(post.reviewerName) || ['tin-y-te', 'y-hoc-thuong-thuc'].includes(post.category.slug);
   const url = `/tin-tuc/${post.slug}`;
   return (
-    <div className="container-page py-10 md:py-16">
+    <main className="container-page py-12 md:py-16">
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -101,10 +101,10 @@ export default async function Page({ params, searchParams }: Props) {
       <Link href="/tin-tuc" className="text-deep-cobalt mb-8 inline-flex items-center gap-2 font-semibold">
         <ArrowLeft className="size-4" aria-hidden /> Tin tức
       </Link>
-      <article className="mx-auto max-w-4xl">
+      <article className="mx-auto max-w-[720px]">
         <header className="border-hairline mb-8 border-b pb-8">
           <p className="text-deep-cobalt text-body-sm mb-3 font-semibold">{post.category.name}</p>
-          <h1 className="text-[32px] leading-tight md:text-[50px]">{post.title}</h1>
+          <h1 className="text-[42px] leading-tight md:text-[50px]">{post.title}</h1>
           {post.excerpt && <p className="text-slate-gray mt-4 text-[18px] leading-7">{post.excerpt}</p>}
           <div className="text-body-sm text-slate-gray mt-5 flex flex-wrap gap-x-5 gap-y-2">
             {post.publishedAt && (
@@ -121,8 +121,11 @@ export default async function Page({ params, searchParams }: Props) {
           </div>
         </header>
         {headings.length > 1 && (
-          <nav aria-label="Mục lục bài viết" className="border-hairline bg-paper mb-8 rounded-xl border p-5">
-            <h2 className="mb-3 text-[18px]">Trong bài viết</h2>
+          <nav
+            aria-label="Mục lục bài viết"
+            className="border-hairline bg-paper mb-8 rounded-2xl border p-6 shadow-sm"
+          >
+            <p className="text-ink-navy mb-3 text-xl font-bold">Trong bài viết</p>
             <ol className="space-y-2">
               {headings.map((heading, i) => (
                 <li key={i} className="text-body-sm">
@@ -141,7 +144,7 @@ export default async function Page({ params, searchParams }: Props) {
             width={1200}
             height={720}
             unoptimized
-            className="mb-8 h-auto w-full rounded-xl"
+            className="mb-10 h-auto w-full rounded-xl"
           />
         )}
         <BlockRenderer blocks={post.blocks} />
@@ -153,7 +156,7 @@ export default async function Page({ params, searchParams }: Props) {
         )}
         {post.specialtyTags.length > 0 && (
           <div className="bg-info-bg mt-8 rounded-xl p-6">
-            <h2 className="text-[20px]">Cần khám chuyên khoa {post.specialtyTags.join(', ')}?</h2>
+            <h2 className="text-[24px]">Cần khám chuyên khoa {post.specialtyTags.join(', ')}?</h2>
             <p className="text-slate-gray mt-2">Chọn cơ sở y tế và đặt lịch khám phù hợp.</p>
             <Link href="/co-so-y-te" className="text-deep-cobalt mt-4 inline-block font-semibold">
               Đặt khám ngay →
@@ -174,7 +177,7 @@ export default async function Page({ params, searchParams }: Props) {
       </article>
       {related.length > 0 && (
         <section className="mt-16">
-          <h2 className="mb-6 text-[26px]">Bài viết liên quan</h2>
+          <h2 className="section-title mb-6">Bài viết liên quan</h2>
           <div className="grid gap-6 md:grid-cols-3">
             {related.map((item) => (
               <PostCard key={item.id} post={item} />
@@ -182,6 +185,6 @@ export default async function Page({ params, searchParams }: Props) {
           </div>
         </section>
       )}
-    </div>
+    </main>
   );
 }

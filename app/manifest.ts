@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { DEFAULT_BACKGROUND_COLOR, DEFAULT_PRIMARY_COLOR } from '@/lib/config/brand-colors';
 
 // W09: manifest nhận diện web khi người dùng lưu lối tắt trên thiết bị.
 export default function manifest(): MetadataRoute.Manifest {
@@ -10,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#f8f9fb',
-    theme_color: '#006bff',
+    background_color: DEFAULT_BACKGROUND_COLOR,
+    theme_color: DEFAULT_PRIMARY_COLOR,
   };
 }

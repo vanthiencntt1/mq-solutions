@@ -10,7 +10,7 @@ import type { SiteBanner } from '@/lib/domain/ports';
 export function BannerCarousel({ banners }: { banners: SiteBanner[] }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
-    if (banners.length < 2) return;
+    if (banners.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const timer = window.setInterval(() => setIndex((current) => (current + 1) % banners.length), 5000);
     return () => window.clearInterval(timer);
   }, [banners.length]);
@@ -18,7 +18,7 @@ export function BannerCarousel({ banners }: { banners: SiteBanner[] }) {
   const banner = banners[index] ?? banners[0];
   if (!banner) return null;
   const picture = (
-    <picture className="block overflow-hidden rounded-2xl">
+    <picture className="border-hairline bg-paper block overflow-hidden rounded-xl border shadow-lg">
       {banner.imageMobileUrl && <source media="(max-width: 767px)" srcSet={banner.imageMobileUrl} />}
       <Image
         src={banner.imageUrl}
@@ -32,7 +32,7 @@ export function BannerCarousel({ banners }: { banners: SiteBanner[] }) {
     </picture>
   );
   return (
-    <section className="container-page py-6" aria-label="Thông tin nổi bật">
+    <section className="container-page py-8 md:py-12" aria-label="Thông tin nổi bật">
       {banner.link ? (
         <Link href={banner.link} aria-label={banner.title || 'Xem thông tin nổi bật'}>
           {picture}
@@ -41,12 +41,12 @@ export function BannerCarousel({ banners }: { banners: SiteBanner[] }) {
         picture
       )}
       {banners.length > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-4">
+        <div className="mt-5 flex items-center justify-center gap-4">
           <button
             type="button"
             aria-label="Banner trước"
             onClick={() => setIndex((index - 1 + banners.length) % banners.length)}
-            className="border-border grid size-11 place-items-center rounded-full border"
+            className="border-hairline bg-paper text-ink-navy hover:bg-info-bg grid size-11 place-items-center rounded-lg border shadow-sm"
           >
             <ChevronLeft aria-hidden />
           </button>
@@ -57,7 +57,7 @@ export function BannerCarousel({ banners }: { banners: SiteBanner[] }) {
             type="button"
             aria-label="Banner tiếp"
             onClick={() => setIndex((index + 1) % banners.length)}
-            className="border-border grid size-11 place-items-center rounded-full border"
+            className="border-hairline bg-paper text-ink-navy hover:bg-info-bg grid size-11 place-items-center rounded-lg border shadow-sm"
           >
             <ChevronRight aria-hidden />
           </button>

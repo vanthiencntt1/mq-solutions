@@ -196,6 +196,19 @@ describe('đổi mật khẩu, quên mật khẩu, phiên (C01 mục 6, 8)', () 
 });
 
 describe('thông tin cá nhân (C01 mục 7)', () => {
+  it('chỉ đưa tên, CCCD và số điện thoại đã che ra hồ sơ', async () => {
+    const { f, svc } = await registered();
+    const profile = await svc.getProfile([...f.accounts.keys()][0]!);
+    expect(profile).toMatchObject({
+      nameMasked: 'N*** V*** M***',
+      cccdMasked: '********0001',
+      phoneMasked: '090****001',
+    });
+    expect(JSON.stringify(profile)).not.toContain(REG.fullName);
+    expect(JSON.stringify(profile)).not.toContain(REG.phone);
+    expect(JSON.stringify(profile)).not.toContain(REG.cccd);
+  });
+
   it('đổi Gmail phải nhập lại mật khẩu, gửi báo về Gmail cũ', async () => {
     const { f, svc, password } = await registered();
     const id = [...f.accounts.keys()][0]!;

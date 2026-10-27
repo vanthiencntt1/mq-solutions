@@ -54,6 +54,11 @@ export interface DoctorEntry {
   price: number | null;
 }
 
+export interface FacilityCounts {
+  specialtyCount?: number;
+  doctorCount?: number;
+}
+
 export interface FacilityPublicDeps {
   facilities: {
     list(): Promise<PublicFacility[]>;
@@ -159,10 +164,10 @@ export class FacilityPublicService {
 
   async facilityCatalog(code: string) {
     const [specialties, doctors, prices, rooms] = await Promise.allSettled([
-      this.d.catalog.specialties(code),
-      this.d.catalog.doctors(code),
-      this.d.catalog.prices(code),
-      this.d.catalog.rooms(code),
+      withDeadline(this.d.catalog.specialties(code)),
+      withDeadline(this.d.catalog.doctors(code)),
+      withDeadline(this.d.catalog.prices(code)),
+      withDeadline(this.d.catalog.rooms(code)),
     ]);
     return {
       specialties: specialties.status === 'fulfilled' ? specialties.value : null,
@@ -170,6 +175,26 @@ export class FacilityPublicService {
       prices: prices.status === 'fulfilled' ? prices.value.list : null,
       rooms: rooms.status === 'fulfilled' ? rooms.value : null,
     };
+  }
+
+  /** Số liệu hiển thị lấy từ catalog có cache; từng nguồn lỗi được bỏ qua riêng. */
+  async facilityCounts(facilities: PublicFacility[]): Promise<Record<string, FacilityCounts>> {
+    const entries = await Promise.all(
+      facilities.filter(canBook).map(async (facility) => {
+        const [specialties, doctors] = await Promise.allSettled([
+          withDeadline(this.d.catalog.specialties(facility.code)),
+          withDeadline(this.d.catalog.doctors(facility.code)),
+        ]);
+        return [
+          facility.code,
+          {
+            ...(specialties.status === 'fulfilled' ? { specialtyCount: specialties.value.length } : {}),
+            ...(doctors.status === 'fulfilled' ? { doctorCount: doctors.value.length } : {}),
+          },
+        ] as const;
+      }),
+    );
+    return Object.fromEntries(entries);
   }
 
   async doctors(input: { facility?: string; specialty?: string; date?: string; sort?: string } = {}) {

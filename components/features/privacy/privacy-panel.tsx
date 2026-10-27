@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { IconTile } from '@/components/ui/icon-tile';
 
 interface DeletionResult {
   requestedAt: string;
@@ -60,11 +61,13 @@ export function PrivacyPanel({ initialRequestedAt }: { initialRequestedAt: strin
   }
 
   return (
-    <Card className="space-y-6">
+    <Card variant="panel" className="space-y-6">
       <div className="flex items-start gap-3">
-        <ShieldCheck className="text-primary mt-0.5 size-6 shrink-0" aria-hidden="true" />
+        <IconTile>
+          <ShieldCheck aria-hidden="true" />
+        </IconTile>
         <div>
-          <h2 className="text-[18px] font-semibold">Quyền riêng tư của bạn</h2>
+          <h2 className="section-title">Quyền riêng tư của bạn</h2>
           <p className="text-body-sm text-slate-gray mt-1">
             Tải bản sao thông tin tài khoản và lịch đặt khám trên MQ Solutions. Thông tin định danh trong tệp
             được che một phần.
@@ -78,11 +81,11 @@ export function PrivacyPanel({ initialRequestedAt }: { initialRequestedAt: strin
         <Download aria-hidden="true" /> {busy === 'export' ? 'Đang chuẩn bị…' : 'Tải dữ liệu của tôi'}
       </Button>
 
-      <div className="border-border space-y-4 border-t pt-6">
+      <div className="border-hairline space-y-4 border-t pt-6">
         <div className="flex items-start gap-3">
           <Trash2 className="text-danger mt-0.5 size-5 shrink-0" aria-hidden="true" />
           <div>
-            <h3 className="font-semibold">Yêu cầu xóa tài khoản</h3>
+            <h3 className="text-xl font-bold">Yêu cầu xóa tài khoản</h3>
             <p className="text-body-sm text-slate-gray mt-1">
               Chúng tôi tiếp nhận yêu cầu để kiểm tra và xử lý. Lịch sử khám, thanh toán cần lưu theo quy định
               sẽ được xem xét riêng.

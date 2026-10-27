@@ -1,4 +1,59 @@
+import { z } from 'zod';
 import type { BookingMode, ObjectType } from './types';
+
+// Nguồn lịch khám của cơ sở:
+//  HIS   – ngày khám đọc từ DMBSKHAMBENH, khung giờ từ btdkp_thoigiankham (qua ApiDatKham).
+//  FIXED – web tự vẽ khung giờ cố định theo cấu hình dưới; STT vẫn lấy số nhỏ nhất HIS chưa dùng.
+export type ScheduleSource = 'HIS' | 'FIXED';
+
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Giờ dạng HH:mm');
+const hisCode = z.string().trim().regex(/^\d{1,10}$/, 'Mã HIS chỉ gồm chữ số');
+
+export const fixedScheduleSchema = z
+  .object({
+    // Thứ trong tuần cho đặt: 0 = Chủ nhật, 1 = Thứ 2 … 6 = Thứ 7
+    weekdays: z
+      .array(z.number().int().min(0).max(6))
+      .min(1)
+      .max(7)
+      .refine((v) => new Set(v).size === v.length, 'Thứ bị trùng'),
+    slots: z
+      .array(
+        z
+          .object({
+            start: hhmm,
+            end: hhmm,
+            fromNumber: z.number().int().min(1).max(9999),
+            toNumber: z.number().int().min(1).max(9999),
+          })
+          .refine((s) => s.start < s.end, 'Giờ bắt đầu phải trước giờ kết thúc')
+          .refine((s) => s.fromNumber <= s.toNumber, 'Số bắt đầu phải ≤ số cuối'),
+      )
+      .min(1)
+      .max(12),
+    // PostBooking_Unpaid bắt buộc mã bác sĩ (lỗi 4010): bác sĩ mặc định + bác sĩ riêng theo phòng
+    doctorId: hisCode,
+    roomDoctors: z.record(z.string().regex(/^\d{1,10}$/), hisCode).default({}),
+  })
+  .refine((v) => {
+    const ranges = [...v.slots].sort((a, b) => a.fromNumber - b.fromNumber);
+    return ranges.every((s, i) => i === 0 || s.fromNumber > ranges[i - 1]!.toNumber);
+  }, 'Dải số của các khung giờ không được chồng nhau');
+
+export type FixedSchedule = z.infer<typeof fixedScheduleSchema>;
+
+export const defaultFixedSchedule: FixedSchedule = {
+  weekdays: [1, 2, 3, 4, 5, 6],
+  slots: [{ start: '07:00', end: '16:00', fromNumber: 1, toNumber: 200 }],
+  doctorId: '',
+  roomDoctors: {},
+};
+
+/** Đọc cấu hình FIXED đã lưu; null nếu thiếu hoặc hỏng (khi đó cơ sở không có lịch). */
+export function parseFixedSchedule(raw: unknown): FixedSchedule | null {
+  const parsed = fixedScheduleSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
 export interface Specialty {
   id: string;
@@ -51,6 +106,8 @@ export interface CatalogFacility {
   allowBhyt: boolean;
   allowSameDay: boolean;
   payOptions: ('ONLINE' | 'AT_FACILITY')[];
+  scheduleSource?: ScheduleSource;
+  fixedSchedule?: FixedSchedule | null;
 }
 export interface CatalogFacilityReader {
   findByCode(code: string): Promise<CatalogFacility | null>;
@@ -86,6 +143,37 @@ export function filterSchedules(
         ? !!selection.doctorId && s.doctorId === selection.doctorId
         : !!selection.roomId && s.roomId === selection.roomId),
   );
+}
+
+/** Chế độ FIXED: mọi ngày hợp lệ trong 14 ngày tới rơi vào thứ được cấu hình. */
+export function fixedSchedules(
+  config: FixedSchedule,
+  roomId: number,
+  now: Date,
+  allowSameDay: boolean,
+  maxDays = 14,
+): ExamSchedule[] {
+  const today = new Date(`${localDate(now)}T00:00:00Z`);
+  const doctorId = config.roomDoctors[String(roomId)] ?? config.doctorId;
+  const result: ExamSchedule[] = [];
+  for (let i = allowSameDay ? 0 : 1; i <= maxDays; i++) {
+    const day = new Date(today.getTime() + i * 86_400_000);
+    if (!config.weekdays.includes(day.getUTCDay())) continue;
+    result.push({ date: day.toISOString().slice(0, 10), roomId, doctorId: doctorId || undefined });
+  }
+  return result;
+}
+
+/** Chế độ FIXED: khung giờ do web vẽ; id khung = thứ tự 1..n để lưu vào slotHisId. */
+export function fixedTimeSlots(config: FixedSchedule): TimeSlot[] {
+  return config.slots.map((s, i) => ({
+    id: i + 1,
+    startTime: s.start,
+    endTime: s.end,
+    startNumber: s.fromNumber,
+    maxNumber: s.toNumber,
+    numberOfJumps: 1,
+  }));
 }
 
 export function allowedMode(bookingMode: BookingMode, mode: 'ROOM' | 'DOCTOR'): boolean {

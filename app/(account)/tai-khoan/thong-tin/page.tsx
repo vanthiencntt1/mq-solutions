@@ -15,8 +15,13 @@ export default async function ProfilePage() {
     getPrivacyService().getDeletionRequest(s.id),
   ]);
   return (
-    <div className="space-y-6">
-      <h1 className="text-[28px]">Thông tin cá nhân</h1>
+    <div className="space-y-8 pb-8">
+      <header>
+        <h1 className="text-[38px] leading-tight md:text-[50px]">Thông tin cá nhân</h1>
+        <p className="text-slate-gray mt-2">
+          Kiểm tra thông tin định danh, liên hệ và quyền riêng tư của bạn.
+        </p>
+      </header>
       <ProfileForm profile={profile} />
       <PrivacyPanel initialRequestedAt={deletionRequestedAt} />
       <div className="flex flex-wrap gap-3">

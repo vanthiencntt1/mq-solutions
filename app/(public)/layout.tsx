@@ -5,6 +5,7 @@ import { SiteFooter } from '@/components/layout/site-footer';
 import { SiteHeader } from '@/components/layout/site-header';
 import { SitePopup } from '@/components/features/site/popup';
 import { SiteBannerPlacement } from '@/components/features/site/banner-carousel';
+import { DEFAULT_PRIMARY_COLOR, DEFAULT_PRIMARY_HOVER_COLOR } from '@/lib/config/brand-colors';
 import { getSiteContentService, getSiteSettings } from '@/lib/services/site-content';
 import type { CSSProperties } from 'react';
 
@@ -22,10 +23,10 @@ export default async function PublicLayout({ children }: { children: React.React
   // A11 mục 1: chỉ đưa mã hex đã kiểm tra vào CSS variable của bố cục công khai.
   const color = /^#[0-9a-fA-F]{6}$/.test(settings.brand.primaryColor)
     ? settings.brand.primaryColor
-    : '#006bff';
+    : DEFAULT_PRIMARY_COLOR;
   const hover = /^#[0-9a-fA-F]{6}$/.test(settings.brand.primaryHoverColor)
     ? settings.brand.primaryHoverColor
-    : '#004eba';
+    : DEFAULT_PRIMARY_HOVER_COLOR;
   const theme = { '--primary': color, '--primary-hover': hover } as CSSProperties;
   return (
     <div style={theme}>

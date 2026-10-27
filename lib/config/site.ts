@@ -80,20 +80,29 @@ export const ACCOUNT_NAV: NavItem[] = [
   { href: '/tai-khoan/doi-mat-khau', label: 'Đổi mật khẩu' },
 ];
 
-export const ADMIN_NAV: (NavItem & { doc: string })[] = [
-  { href: '/admin', label: 'Tổng quan', doc: 'A10' },
-  { href: '/admin/co-so', label: 'Cơ sở y tế', doc: 'A02' },
-  { href: '/admin/danh-muc', label: 'Danh mục khám', doc: 'A03' },
-  { href: '/admin/lich-dat', label: 'Lịch đặt & phiếu khám', doc: 'A06' },
-  { href: '/admin/check-in', label: 'Check-in QR', doc: 'A06' },
-  { href: '/admin/thanh-toan', label: 'Thanh toán & đối soát', doc: 'A07' },
-  { href: '/admin/benh-nhan', label: 'Tài khoản bệnh nhân', doc: 'A05' },
-  { href: '/admin/noi-dung', label: 'Nội dung', doc: 'A04' },
-  { href: '/admin/thong-bao', label: 'Thông báo & email', doc: 'A08' },
-  { href: '/admin/danh-gia', label: 'Đánh giá, liên hệ', doc: 'A09' },
-  { href: '/admin/bao-cao', label: 'Báo cáo & giám sát', doc: 'A10' },
-  { href: '/admin/nguoi-dung', label: 'Người dùng admin', doc: 'A01' },
-  { href: '/admin/cau-hinh', label: 'Cấu hình hệ thống', doc: 'A11' },
+export const ADMIN_NAV_GROUPS = ['Vận hành', 'Khách hàng', 'Dữ liệu', 'Hệ thống'] as const;
+export type AdminNavGroup = (typeof ADMIN_NAV_GROUPS)[number];
+export type AdminNavItem = NavItem & {
+  doc: string;
+  group: AdminNavGroup;
+  icon: string;
+};
+
+export const ADMIN_NAV: AdminNavItem[] = [
+  { href: '/admin', label: 'Tổng quan', doc: 'A10', group: 'Vận hành', icon: 'overview' },
+  { href: '/admin/lich-dat', label: 'Lịch đặt & phiếu khám', doc: 'A06', group: 'Vận hành', icon: 'calendar' },
+  { href: '/admin/check-in', label: 'Check-in', doc: 'A06', group: 'Vận hành', icon: 'checkin' },
+  { href: '/admin/thanh-toan', label: 'Thanh toán & đối soát', doc: 'A07', group: 'Vận hành', icon: 'payment' },
+  { href: '/admin/benh-nhan', label: 'Tài khoản bệnh nhân', doc: 'A05', group: 'Khách hàng', icon: 'patients' },
+  { href: '/admin/danh-gia', label: 'Đánh giá & liên hệ', doc: 'A09', group: 'Khách hàng', icon: 'reviews' },
+  { href: '/admin/danh-gia/gop-y', label: 'Góp ý', doc: 'A09', group: 'Khách hàng', icon: 'feedback' },
+  { href: '/admin/co-so', label: 'Cơ sở y tế', doc: 'A02', group: 'Dữ liệu', icon: 'facility' },
+  { href: '/admin/danh-muc', label: 'Danh mục khám', doc: 'A03', group: 'Dữ liệu', icon: 'catalog' },
+  { href: '/admin/noi-dung', label: 'Nội dung', doc: 'A04', group: 'Dữ liệu', icon: 'content' },
+  { href: '/admin/thong-bao', label: 'Thông báo & email', doc: 'A08', group: 'Dữ liệu', icon: 'notification' },
+  { href: '/admin/bao-cao', label: 'Báo cáo & giám sát', doc: 'A10', group: 'Hệ thống', icon: 'report' },
+  { href: '/admin/nguoi-dung', label: 'Người dùng admin', doc: 'A01', group: 'Hệ thống', icon: 'users' },
+  { href: '/admin/cau-hinh', label: 'Cấu hình', doc: 'A11', group: 'Hệ thống', icon: 'settings' },
 ];
 
 export const FOOTER_COLUMNS: { title: string; links: NavItem[] }[] = [

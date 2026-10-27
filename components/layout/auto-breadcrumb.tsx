@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Breadcrumb } from './breadcrumb';
 
 const LABELS: Record<string, string> = {
@@ -18,10 +19,17 @@ const LABELS: Record<string, string> = {
 
 export function AutoBreadcrumb({ baseUrl }: { baseUrl: string }) {
   const pathname = usePathname();
+  // Trang chi tiết (cơ sở, bác sĩ, tin…): mục cuối lấy tiêu đề h1 thay vì slug không dấu
+  const [title, setTitle] = useState<{ path: string; text: string } | null>(null);
+  useEffect(() => {
+    const text = document.querySelector('main h1')?.textContent?.trim();
+    setTitle(text ? { path: pathname, text } : null);
+  }, [pathname]);
   if (pathname === '/') return null;
   const segments = pathname.split('/').filter(Boolean);
   const items = segments.map((segment, index) => {
     let label = LABELS[segment];
+    if (!label && index === segments.length - 1 && title?.path === pathname) label = title.text;
     if (!label) {
       try {
         label = decodeURIComponent(segment).replace(/-/g, ' ');

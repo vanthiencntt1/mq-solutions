@@ -262,16 +262,39 @@ export class RecordsService {
   }
 
   private async loadEncounters(ctx: Context, months: string[]): Promise<InternalEncounter[]> {
-    const rows = await this.data.cached(ctx, 'encounters', months.join(','), z.array(EncounterHis), () =>
-      this.data.call(
-        ctx,
-        'MedicalRecords/GetEncounter',
-        { PatientCode: ctx.maBN, MMyy: months.join(',') },
-        z.array(EncounterHis),
-      ),
-    );
+    // HIS ghép các tháng bằng UNION trên bảng theo tháng; chỉ cần thiếu một bảng là cả truy vấn rỗng.
+    // Gọi từng tháng (tối đa 4 song song) để tháng lỗi/không có bảng không làm mất các tháng khác.
+    const rows: z.infer<typeof EncounterHis>[] = [];
+    let firstError: unknown;
+    let failed = 0;
+    for (let i = 0; i < months.length; i += 4) {
+      const batch = await Promise.all(
+        months.slice(i, i + 4).map((month) =>
+          this.data
+            .cached(ctx, 'encounters', month, z.array(EncounterHis), () =>
+              this.data.call(
+                ctx,
+                'MedicalRecords/GetEncounter',
+                { PatientCode: ctx.maBN, MMyy: month },
+                z.array(EncounterHis),
+              ),
+            )
+            .catch((err: unknown) => {
+              // Một tháng lỗi vẫn hiện các tháng còn lại; chỉ báo lỗi khi mọi tháng đều lỗi.
+              firstError ??= err;
+              failed++;
+              return [];
+            }),
+        ),
+      );
+      rows.push(...batch.flat());
+    }
+    if (months.length > 0 && failed === months.length) throw firstError;
     // MAQL của HIS có thể chứa MaBN; ID công khai phải là HMAC để URL/JSON không lộ MaBN.
-    return rows.map((r) => ({
+    const unique = [...new Map(rows.map((r) => [r.EncounterCode, r])).values()];
+    return unique
+      .sort((a, b) => fromHisDate(b.CreateDate).localeCompare(fromHisDate(a.CreateDate)))
+      .map((r) => ({
       id: this.d.pii.hmac(`${ctx.code}:${r.EncounterCode}`),
       hisCode: r.EncounterCode,
       date: fromHisDate(r.CreateDate),

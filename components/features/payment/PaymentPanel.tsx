@@ -20,6 +20,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert } from '@/components/ui/form-field';
+import { ProductFrame } from '@/components/ui/product-frame';
+import { BookingStepper } from '@/components/features/booking/booking-stepper';
+import { BookingSummary } from '@/components/features/booking/booking-summary';
 import type { PaymentView } from '@/lib/domain/payment/types';
 import { formatDateTime, formatMoney } from '@/lib/utils/format';
 
@@ -122,138 +125,152 @@ export function PaymentPanel({ initial, initialNow }: { initial: PaymentView; in
 
   const qr = !expired && data.paymentStatus === 'PENDING' ? data.qr : null;
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-16">
+    <div className="space-y-8 pb-16">
+      <BookingStepper current={3} />
       <header className="space-y-2">
-        <p className="text-primary text-sm font-semibold">CHẶNG 4 / 4</p>
-        <h1 className="text-ink-navy text-[28px] leading-tight font-bold">Thanh toán đặt khám</h1>
+        <p className="text-primary text-sm font-semibold">BƯỚC 4 / 4</p>
+        <h1 className="text-ink-navy md:text-heading-sm text-[40px] leading-tight font-bold">
+          Thanh toán đặt khám
+        </h1>
         <p className="text-slate-gray">Chuyển đúng số tiền và nội dung để cơ sở xác nhận tự động.</p>
       </header>
-
-      <div aria-live="polite" className="space-y-3">
-        <Alert tone={message.tone}>
-          {message.tone === 'success' ? (
-            <CheckCircle2 className="mr-2 inline size-5" aria-hidden />
-          ) : message.tone === 'danger' ? (
-            <CircleAlert className="mr-2 inline size-5" aria-hidden />
-          ) : (
-            <Clock3 className="mr-2 inline size-5" aria-hidden />
-          )}
-          {message.text}
-        </Alert>
-        {error && (
-          <Alert tone="danger">
-            <CircleAlert className="mr-2 inline size-4" aria-hidden />
-            {error}
-          </Alert>
-        )}
-      </div>
-
-      {qr ? (
-        <Card className="grid gap-8 rounded-2xl p-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:p-6">
-          <section className="space-y-4 text-center" aria-label="Mã VietQR">
-            <div className="border-hairline mx-auto w-full max-w-[320px] rounded-xl border bg-white p-3 shadow-sm">
-              {failedImageUrl === qr.qrImageUrl ? (
-                <div className="text-slate-gray flex aspect-square flex-col items-center justify-center gap-3 p-4 text-sm">
-                  <CircleAlert className="text-warning size-8" aria-hidden />
-                  <span>Chưa tải được mã QR. Bạn có thể chuyển khoản bằng thông tin bên cạnh.</span>
-                </div>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          <div aria-live="polite" className="space-y-3">
+            <Alert tone={message.tone}>
+              {message.tone === 'success' ? (
+                <CheckCircle2 className="mr-2 inline size-5" aria-hidden />
+              ) : message.tone === 'danger' ? (
+                <CircleAlert className="mr-2 inline size-5" aria-hidden />
               ) : (
-                // Ảnh QR từ VietQR giữ URL động theo tài khoản và mã đơn của cơ sở.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={qr.qrImageUrl}
-                  alt={`Mã VietQR thanh toán phiếu ${data.code}`}
-                  className="aspect-square w-full object-contain"
-                  onError={() => setFailedImageUrl(qr.qrImageUrl)}
-                />
+                <Clock3 className="mr-2 inline size-5" aria-hidden />
               )}
-            </div>
-            <Button asChild variant="outline" className="w-full max-w-[320px]">
-              <a
-                href={`/api/payment/qr/${encodeURIComponent(data.code)}`}
-                download={`${data.code}-vietqr.png`}
-              >
-                <Download className="size-4" aria-hidden /> Tải ảnh QR
-              </a>
-            </Button>
-            <p className="text-slate-gray text-sm">Mở ứng dụng ngân hàng và quét mã QR để thanh toán.</p>
-          </section>
+              {message.text}
+            </Alert>
+            {error && (
+              <Alert tone="danger">
+                <CircleAlert className="mr-2 inline size-4" aria-hidden />
+                {error}
+              </Alert>
+            )}
+          </div>
 
-          <section className="space-y-5" aria-label="Thông tin chuyển khoản">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Badge tone="warning">
-                <Clock3 className="size-4" aria-hidden /> Còn {countdown(data.expiresAt, now)}
-              </Badge>
-              <span className="text-slate-gray text-sm">Hạn {formatDateTime(data.expiresAt)}</span>
-            </div>
-            <div>
-              <p className="text-slate-gray text-sm">Số tiền cần chuyển</p>
-              <p className="text-ink-navy mt-1 text-[32px] font-bold tabular-nums">
-                {formatMoney(data.amount)}
-              </p>
-            </div>
-            <dl className="border-hairline divide-hairline divide-y border-y">
-              <div className="flex items-start justify-between gap-3 py-3">
-                <dt className="text-slate-gray flex items-center gap-2 text-sm">
-                  <Landmark className="size-4" aria-hidden /> Ngân hàng
-                </dt>
-                <dd className="font-semibold">{qr.bankCode}</dd>
-              </div>
-              <div className="flex items-start justify-between gap-3 py-3">
-                <dt className="text-slate-gray text-sm">Chủ tài khoản</dt>
-                <dd className="text-right font-semibold">{qr.accountName}</dd>
-              </div>
-              <div className="flex items-start justify-between gap-3 py-3">
-                <dt className="text-slate-gray text-sm">Số tài khoản</dt>
-                <dd className="flex flex-col items-end gap-2">
-                  <strong className="text-lg tabular-nums">{qr.accountNo}</strong>
-                  <Button size="sm" variant="outline" onClick={() => copy(qr.accountNo, 'account')}>
-                    <Copy className="size-4" aria-hidden />
-                    {copied === 'account' ? 'Đã sao chép' : 'Sao chép'}
-                  </Button>
-                </dd>
-              </div>
-              <div className="flex items-start justify-between gap-3 py-3">
-                <dt className="text-slate-gray flex items-center gap-2 text-sm">
-                  <ReceiptText className="size-4" aria-hidden /> Nội dung
-                </dt>
-                <dd className="flex flex-col items-end gap-2">
-                  <strong className="text-lg tracking-wide">{qr.content}</strong>
-                  <Button size="sm" variant="outline" onClick={() => copy(qr.content, 'content')}>
-                    <Copy className="size-4" aria-hidden />
-                    {copied === 'content' ? 'Đã sao chép' : 'Sao chép'}
-                  </Button>
-                </dd>
-              </div>
-            </dl>
-            <p className="text-slate-gray text-sm">
-              Tiền được chuyển trực tiếp tới tài khoản của {data.facilityName}. Hệ thống tự kiểm tra giao dịch
-              sau mỗi 3 giây.
-            </p>
-          </section>
-        </Card>
-      ) : (
-        <Card className="space-y-4 p-4 text-center md:p-6">
-          {data.paymentStatus === 'PAID' ? (
-            <LoaderCircle className="text-primary mx-auto size-8 animate-spin" aria-hidden />
+          {qr ? (
+            <Card
+              variant="panel"
+              className="grid gap-8 p-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:p-6"
+            >
+              <section className="space-y-4 text-center" aria-label="Mã VietQR">
+                <ProductFrame className="mx-auto w-full max-w-[320px]">
+                  <div className="bg-card p-3">
+                    {failedImageUrl === qr.qrImageUrl ? (
+                      <div className="text-slate-gray flex aspect-square flex-col items-center justify-center gap-3 p-4 text-sm">
+                        <CircleAlert className="text-warning size-8" aria-hidden />
+                        <span>Chưa tải được mã QR. Bạn có thể chuyển khoản bằng thông tin bên cạnh.</span>
+                      </div>
+                    ) : (
+                      // Ảnh QR từ VietQR giữ URL động theo tài khoản và mã đơn của cơ sở.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={qr.qrImageUrl}
+                        alt={`Mã VietQR thanh toán phiếu ${data.code}`}
+                        className="aspect-square w-full object-contain"
+                        onError={() => setFailedImageUrl(qr.qrImageUrl)}
+                      />
+                    )}
+                  </div>
+                </ProductFrame>
+                <Button asChild variant="outline" className="w-full max-w-[320px]">
+                  <a
+                    href={`/api/payment/qr/${encodeURIComponent(data.code)}`}
+                    download={`${data.code}-vietqr.png`}
+                  >
+                    <Download className="size-4" aria-hidden /> Tải ảnh QR
+                  </a>
+                </Button>
+                <p className="text-slate-gray text-sm">Mở ứng dụng ngân hàng và quét mã QR để thanh toán.</p>
+              </section>
+
+              <section className="space-y-5" aria-label="Thông tin chuyển khoản">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Badge tone="warning" className="px-4 py-2 text-base font-bold tabular-nums">
+                    <Clock3 className="size-5" aria-hidden /> Còn {countdown(data.expiresAt, now)}
+                  </Badge>
+                  <span className="text-slate-gray text-sm">Hạn {formatDateTime(data.expiresAt)}</span>
+                </div>
+                <div>
+                  <p className="text-slate-gray text-sm">Số tiền cần chuyển</p>
+                  <p className="text-ink-navy mt-1 text-[32px] font-bold tabular-nums">
+                    {formatMoney(data.amount)}
+                  </p>
+                </div>
+                <dl className="border-hairline divide-hairline divide-y border-y">
+                  <div className="flex items-start justify-between gap-3 py-3">
+                    <dt className="text-slate-gray flex items-center gap-2 text-sm">
+                      <Landmark className="size-4" aria-hidden /> Ngân hàng
+                    </dt>
+                    <dd className="font-semibold">{qr.bankCode}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 py-3">
+                    <dt className="text-slate-gray text-sm">Chủ tài khoản</dt>
+                    <dd className="text-right font-semibold">{qr.accountName}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 py-3">
+                    <dt className="text-slate-gray text-sm">Số tài khoản</dt>
+                    <dd className="flex flex-col items-end gap-2">
+                      <strong className="text-lg tabular-nums">{qr.accountNo}</strong>
+                      <Button size="sm" variant="outline" onClick={() => copy(qr.accountNo, 'account')}>
+                        <Copy className="size-4" aria-hidden />
+                        {copied === 'account' ? 'Đã sao chép' : 'Sao chép'}
+                      </Button>
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 py-3">
+                    <dt className="text-slate-gray flex items-center gap-2 text-sm">
+                      <ReceiptText className="size-4" aria-hidden /> Nội dung
+                    </dt>
+                    <dd className="flex flex-col items-end gap-2">
+                      <strong className="text-lg tracking-wide">{qr.content}</strong>
+                      <Button size="sm" variant="outline" onClick={() => copy(qr.content, 'content')}>
+                        <Copy className="size-4" aria-hidden />
+                        {copied === 'content' ? 'Đã sao chép' : 'Sao chép'}
+                      </Button>
+                    </dd>
+                  </div>
+                </dl>
+                <p className="text-slate-gray text-sm">
+                  Tiền được chuyển trực tiếp tới tài khoản của {data.facilityName}. Hệ thống tự kiểm tra giao
+                  dịch sau mỗi 3 giây.
+                </p>
+              </section>
+            </Card>
           ) : (
-            <CircleAlert className="text-warning mx-auto size-8" aria-hidden />
+            <Card variant="panel" className="space-y-4 p-4 text-center md:p-6">
+              {data.paymentStatus === 'PAID' ? (
+                <LoaderCircle className="text-primary mx-auto size-8 animate-spin" aria-hidden />
+              ) : (
+                <CircleAlert className="text-warning mx-auto size-8" aria-hidden />
+              )}
+              <h2 className="section-title">
+                {data.paymentStatus === 'PAID' ? 'Đang hoàn tất phiếu khám' : 'Mã QR không còn hiệu lực'}
+              </h2>
+              <p className="text-slate-gray text-sm">
+                Mã phiếu: <strong>{data.code}</strong>
+              </p>
+              {data.appointmentStatus === 'DA_CO_STT' && (
+                <Button asChild>
+                  <Link href={`/tai-khoan/phieu-kham/${encodeURIComponent(data.code)}`}>
+                    <Check className="size-4" aria-hidden /> Xem phiếu khám
+                  </Link>
+                </Button>
+              )}
+            </Card>
           )}
-          <h2 className="text-lg font-semibold">
-            {data.paymentStatus === 'PAID' ? 'Đang hoàn tất phiếu khám' : 'Mã QR không còn hiệu lực'}
-          </h2>
-          <p className="text-slate-gray text-sm">
-            Mã phiếu: <strong>{data.code}</strong>
-          </p>
-          {data.appointmentStatus === 'DA_CO_STT' && (
-            <Button asChild>
-              <Link href={`/tai-khoan/phieu-kham/${encodeURIComponent(data.code)}`}>
-                <Check className="size-4" aria-hidden /> Xem phiếu khám
-              </Link>
-            </Button>
-          )}
-        </Card>
-      )}
+        </div>
+        <aside aria-label="Tóm tắt lịch khám" className="lg:sticky lg:top-24">
+          <BookingSummary data={{ facilityName: data.facilityName, amount: data.amount }} />
+        </aside>
+      </div>
     </div>
   );
 }

@@ -81,19 +81,20 @@ export function ConsentManager({ config, nonce }: { config: AnalyticsConfig; non
       {(consent === 'unset' || open) && (
         <section
           aria-label="Lựa chọn cookie phân tích"
-          className="border-hairline bg-paper text-ink-navy fixed inset-x-4 bottom-4 z-50 mx-auto max-w-2xl rounded-2xl border p-4 shadow-lg md:p-6"
+          className="border-hairline bg-paper text-ink-navy fixed right-4 bottom-4 left-4 z-50 max-h-[40dvh] overflow-y-auto rounded-xl border p-4 shadow-lg sm:left-auto sm:w-full sm:max-w-md"
         >
           <div className="flex items-start gap-3">
-            <Cookie className="text-primary mt-1 size-6 shrink-0" aria-hidden />
+            <span className="bg-info-bg text-primary grid size-10 shrink-0 place-items-center rounded-lg">
+              <Cookie className="size-5" strokeWidth={1.75} aria-hidden />
+            </span>
             <div className="min-w-0 flex-1 space-y-2">
-              <h2 className="text-lg font-semibold">Cookie phân tích</h2>
-              <p className="text-slate-gray text-sm leading-6">
-                Chúng tôi chỉ dùng cookie phân tích khi bạn đồng ý để hiểu cách người dùng đặt khám và cải
-                thiện website. Không gửi thông tin cá nhân hay dữ liệu khám bệnh.
+              <h2 className="text-xl font-bold">Cookie phân tích</h2>
+              <p className="text-slate-gray text-sm leading-5">
+                Chỉ dùng cookie phân tích khi bạn đồng ý. Không gửi thông tin cá nhân hay dữ liệu khám bệnh.
               </p>
               <Link
                 href="/chinh-sach/chinh-sach-bao-mat"
-                className="text-ink-navy focus-visible:outline-primary inline-block text-sm font-medium underline underline-offset-4 focus-visible:outline-2"
+                className="text-ink-navy focus-visible:outline-primary inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4 focus-visible:outline-2"
               >
                 Xem chính sách bảo mật
               </Link>
@@ -109,12 +110,17 @@ export function ConsentManager({ config, nonce }: { config: AnalyticsConfig; non
               </button>
             )}
           </div>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => choose('rejected')}>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => choose('rejected')}
+              className="min-w-0 px-2 text-sm"
+            >
               Không đồng ý
             </Button>
-            <Button type="button" onClick={() => choose('accepted')}>
-              <ShieldCheck className="size-5" aria-hidden /> Đồng ý phân tích
+            <Button type="button" onClick={() => choose('accepted')} className="min-w-0 px-2 text-sm">
+              <ShieldCheck className="size-4" aria-hidden /> Đồng ý
             </Button>
           </div>
         </section>

@@ -41,32 +41,34 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
       const id = headingAnchor(block.text, index);
       if (block.level === 2)
         return (
-          <h2 id={id} className="mt-10 mb-4 text-[26px] leading-tight md:text-[38px]">
+          <h2 id={id} className="section-title mt-12 mb-5 scroll-mt-24">
             {block.text}
           </h2>
         );
       if (block.level === 3)
         return (
-          <h3 id={id} className="mt-8 mb-3 text-[22px]">
+          <h3 id={id} className="mt-9 mb-4 scroll-mt-24 text-[24px] leading-snug">
             {block.text}
           </h3>
         );
       return (
-        <h4 id={id} className="mt-6 mb-2 text-[18px]">
+        <h4 id={id} className="mt-7 mb-3 scroll-mt-24 text-[20px]">
           {block.text}
         </h4>
       );
     }
     case 'paragraph':
       return (
-        <p className="mb-5 leading-7">
+        <p className="mb-6 text-[17px] leading-8">
           <InlineText parts={block.content} />
         </p>
       );
     case 'list': {
       const Tag = block.ordered ? 'ol' : 'ul';
       return (
-        <Tag className={`mb-5 space-y-2 pl-6 leading-7 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>
+        <Tag
+          className={`marker:text-primary mb-6 space-y-3 pl-7 text-[17px] leading-8 ${block.ordered ? 'list-decimal' : 'list-disc'}`}
+        >
           {block.items.map((item, i) => (
             <li key={i}>
               <InlineText parts={item} />
@@ -93,7 +95,7 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
       );
     case 'quote':
       return (
-        <blockquote className="border-primary bg-info-bg my-8 rounded-r-xl border-l-4 p-5 text-[18px] leading-7">
+        <blockquote className="border-primary bg-info-bg my-10 rounded-r-xl border-l-4 p-6 text-[19px] leading-8">
           <InlineText parts={block.content} />
           {block.attribution && (
             <cite className="text-body-sm text-slate-gray mt-2 block not-italic">— {block.attribution}</cite>
@@ -130,8 +132,13 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
     case 'callout': {
       const Icon = block.tone === 'warning' ? CircleAlert : block.tone === 'success' ? CircleCheck : Info;
       return (
-        <aside className="bg-info-bg my-6 flex gap-3 rounded-xl p-5">
-          <Icon className="text-info mt-1 size-5 shrink-0" aria-hidden />
+        <aside
+          className={`${block.tone === 'warning' ? 'bg-warning-bg' : block.tone === 'success' ? 'bg-success-bg' : 'bg-info-bg'} my-8 flex gap-3 rounded-xl p-5`}
+        >
+          <Icon
+            className={`${block.tone === 'warning' ? 'text-warning' : block.tone === 'success' ? 'text-success' : 'text-info'} mt-1 size-5 shrink-0`}
+            aria-hidden
+          />
           <div>
             {block.title && <p className="font-semibold">{block.title}</p>}
             <p className="leading-7">
@@ -145,7 +152,7 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
       return (
         <div className="my-6 space-y-3">
           {block.items.map((item, i) => (
-            <details key={i} className="border-hairline bg-paper rounded-xl border p-4">
+            <details key={i} className="border-hairline bg-paper rounded-xl border p-5">
               <summary className="cursor-pointer font-semibold">{item.question}</summary>
               <p className="mt-3 leading-7">
                 <InlineText parts={item.answer} />
@@ -179,7 +186,7 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
 // A04 mục 2: React tự escape chuỗi từ CMS; renderer chỉ nhận union đã được ContentService kiểm.
 export function BlockRenderer({ blocks }: { blocks: ContentBlocks }) {
   return (
-    <div className="text-ink-navy max-w-none">
+    <div className="text-ink-navy max-w-none min-w-0">
       {blocks.map((block, index) => (
         <Block key={index} block={block} index={index} />
       ))}

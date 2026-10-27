@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { CategoryRow } from '@/lib/domain/content/ports';
 import type { PublicPost } from '@/lib/domain/content/types';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PostCard } from './post-card';
 
 export function NewsList({
@@ -26,19 +27,19 @@ export function NewsList({
   const base = categorySlug ? `/tin-tuc/${categorySlug}` : '/tin-tuc';
   const pages = Math.ceil(total / pageSize);
   return (
-    <div className="container-page py-10 md:py-16">
+    <main className="container-page py-12 md:py-16">
       <header className="mb-10 max-w-3xl">
         <p className="text-deep-cobalt text-body-sm mb-3 font-semibold uppercase">
           Góc thông tin MQ Solutions
         </p>
-        <h1 className="text-[32px] leading-tight md:text-[50px]">{title}</h1>
+        <h1 className="text-display-responsive">{title}</h1>
         <p className="text-slate-gray mt-4 text-[18px] leading-7">{description}</p>
       </header>
       <nav aria-label="Chuyên mục tin tức" className="mb-8 flex flex-wrap gap-2">
         <Link
           href="/tin-tuc"
           aria-current={!categorySlug ? 'page' : undefined}
-          className={`text-body-sm rounded-full border px-4 py-2 font-semibold ${!categorySlug ? 'border-deep-cobalt bg-info-bg text-deep-cobalt' : 'border-hairline bg-paper'}`}
+          className={`inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold ${!categorySlug ? 'border-primary bg-info-bg text-primary' : 'border-hairline bg-paper text-ink-navy'}`}
         >
           Tất cả
         </Link>
@@ -47,7 +48,7 @@ export function NewsList({
             key={category.id}
             href={`/tin-tuc/${category.slug}`}
             aria-current={category.slug === categorySlug ? 'page' : undefined}
-            className={`text-body-sm rounded-full border px-4 py-2 font-semibold ${category.slug === categorySlug ? 'border-deep-cobalt bg-info-bg text-deep-cobalt' : 'border-hairline bg-paper'}`}
+            className={`inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold ${category.slug === categorySlug ? 'border-primary bg-info-bg text-primary' : 'border-hairline bg-paper text-ink-navy'}`}
           >
             {category.name}
           </Link>
@@ -65,9 +66,10 @@ export function NewsList({
           </div>
         </>
       ) : (
-        <p className="border-hairline bg-paper rounded-xl border p-8 text-center">
-          Chưa có bài viết trong chuyên mục này.
-        </p>
+        <EmptyState
+          title="Chưa có bài viết"
+          description="Bạn có thể xem các chuyên mục khác hoặc quay lại sau."
+        />
       )}
       {pages > 1 && (
         <nav aria-label="Phân trang tin tức" className="mt-10 flex items-center justify-between gap-3">
@@ -79,7 +81,7 @@ export function NewsList({
               <Link
                 rel="prev"
                 href={`${base}?page=${page - 1}`}
-                className="border-hairline bg-paper inline-flex items-center gap-1 rounded-lg border px-4 py-2"
+                className="border-hairline bg-paper inline-flex min-h-11 items-center gap-1 rounded-lg border px-4 py-2"
               >
                 <ArrowLeft className="size-4" aria-hidden /> Trước
               </Link>
@@ -88,7 +90,7 @@ export function NewsList({
               <Link
                 rel="next"
                 href={`${base}?page=${page + 1}`}
-                className="border-hairline bg-paper inline-flex items-center gap-1 rounded-lg border px-4 py-2"
+                className="border-hairline bg-paper inline-flex min-h-11 items-center gap-1 rounded-lg border px-4 py-2"
               >
                 Tiếp <ArrowRight className="size-4" aria-hidden />
               </Link>
@@ -96,6 +98,6 @@ export function NewsList({
           </div>
         </nav>
       )}
-    </div>
+    </main>
   );
 }

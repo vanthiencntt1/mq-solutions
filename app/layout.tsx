@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { ConsentManager } from '@/components/features/consent/ConsentManager';
+import { DEFAULT_PRIMARY_COLOR } from '@/lib/config/brand-colors';
 import type { AnalyticsConfig } from '@/lib/domain/analytics/ports';
 import { getAnalyticsService } from '@/lib/services/analytics';
 // Be Vietnam Pro tự host qua @fontsource (tệp font nằm trong bundle, không gọi Google lúc build / chạy) – mục 10.3
@@ -8,6 +9,7 @@ import '@fontsource/be-vietnam-pro/400.css';
 import '@fontsource/be-vietnam-pro/500.css';
 import '@fontsource/be-vietnam-pro/600.css';
 import '@fontsource/be-vietnam-pro/700.css';
+import '@fontsource/be-vietnam-pro/800.css';
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#006bff',
+  themeColor: DEFAULT_PRIMARY_COLOR,
   width: 'device-width',
   initialScale: 1,
 };

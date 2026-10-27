@@ -35,6 +35,8 @@ const input = FacilityCreateSchema.parse({
   bookingMode: 'SPECIALTY',
   allowBhyt: true,
   allowSameDay: false,
+  scheduleSource: 'HIS',
+  fixedSchedule: null,
   payOptions: ['ONLINE', 'AT_FACILITY'],
   cancelCutoff: 'D-1 15:00',
   reconcileTime: '21:00',

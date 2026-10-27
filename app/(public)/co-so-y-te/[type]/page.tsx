@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FacilityCard } from '@/components/features/facility/FacilityCard';
+import { SectionHeader } from '@/components/ui/section-header';
 import { getFacilityPublicService } from '@/lib/services/facility-public-service';
 
 export const revalidate = 300;
@@ -24,17 +25,23 @@ export default async function Page({ params }: { params: Promise<{ type: string 
   const { type } = await params;
   const category = TYPES[type];
   if (!category) notFound();
-  const facilities = (await getFacilityPublicService().listFacilities()).filter(
-    (item) => item.type === category.code,
-  );
+  const service = getFacilityPublicService();
+  const facilities = (await service.listFacilities()).filter((item) => item.type === category.code);
+  const counts = await service.facilityCounts(facilities);
   return (
     <div className="container-page py-10 md:py-16">
-      <h1 className="text-ink-navy text-[32px] font-bold md:text-[50px]">{category.label}</h1>
-      <p className="text-slate-gray mt-3">Khám phá {facilities.length} cơ sở và chọn lịch khám phù hợp.</p>
+      <h1 className="text-ink-navy md:text-heading-lg text-[42px] font-bold">{category.label}</h1>
+      <div className="mt-12">
+        <SectionHeader
+          align="left"
+          title="Danh sách cơ sở"
+          description={`${facilities.length} cơ sở để bạn tìm hiểu và đặt khám.`}
+        />
+      </div>
       {facilities.length ? (
-        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {facilities.map((facility) => (
-            <FacilityCard key={facility.code} facility={facility} />
+            <FacilityCard key={facility.code} facility={facility} counts={counts[facility.code]} />
           ))}
         </div>
       ) : (

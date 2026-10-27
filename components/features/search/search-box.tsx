@@ -16,7 +16,13 @@ const GROUPS: { type: SearchGroup; title: string }[] = [
 ];
 
 /** W05 mục 2: ô dùng được ở trang này và header; chỉ tải gợi ý khi người dùng nhập. */
-export function SearchBox({ initialQuery = '' }: { initialQuery?: string }) {
+export function SearchBox({
+  initialQuery = '',
+  prominent = false,
+}: {
+  initialQuery?: string;
+  prominent?: boolean;
+}) {
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<SearchPage | null>(null);
   const [focused, setFocused] = useState(false);
@@ -79,9 +85,13 @@ export function SearchBox({ initialQuery = '' }: { initialQuery?: string }) {
           aria-controls={show ? listId : undefined}
           aria-expanded={show && !!suggestions}
           placeholder="Ví dụ: Nội tiết, Nhi, tên cơ sở..."
-          className="bg-muted h-12 pl-4"
+          className={
+            prominent
+              ? 'border-hairline bg-paper h-14 min-w-0 rounded-lg border pl-4 text-lg shadow-sm'
+              : 'bg-pebble h-12 min-w-0 pl-4'
+          }
         />
-        <Button type="submit" className="shrink-0" aria-label="Tìm kiếm">
+        <Button type="submit" size={prominent ? 'lg' : 'md'} className="shrink-0" aria-label="Tìm kiếm">
           <Search aria-hidden="true" />
           <span className="hidden sm:inline">Tìm kiếm</span>
         </Button>
@@ -90,7 +100,7 @@ export function SearchBox({ initialQuery = '' }: { initialQuery?: string }) {
       {show && (busy || error || suggestions) && (
         <div
           id={listId}
-          className="border-border bg-card absolute z-30 mt-2 max-h-96 w-full overflow-y-auto rounded-xl border p-3 shadow-md"
+          className="border-hairline bg-paper absolute z-30 mt-2 max-h-96 w-full overflow-y-auto rounded-xl border p-3 shadow-md"
         >
           {busy && (
             <p className="text-body-sm text-muted-foreground flex items-center gap-2 p-2" role="status">

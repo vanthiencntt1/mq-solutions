@@ -113,6 +113,49 @@ describe('W03/W04 public catalog', () => {
     expect(calls).toEqual(['A', 'B']);
   });
 
+  it('đếm danh mục để hiển thị và ẩn riêng nguồn lỗi', async () => {
+    const service = new FacilityPublicService({
+      facilities: {
+        async list() {
+          return [];
+        },
+        async bySlug() {
+          return null;
+        },
+        async reviews() {
+          return [];
+        },
+        async posts() {
+          return [];
+        },
+      },
+      catalog: {
+        async specialties(code) {
+          if (code === 'B') throw new Error('HIS lỗi');
+          return [{ id: '1', name: 'Nhi' }];
+        },
+        async doctors() {
+          return [{ id: '1', name: 'Bác sĩ An' }];
+        },
+        async schedules() {
+          return [];
+        },
+        async rooms() {
+          return [];
+        },
+        async prices() {
+          return { list: [] };
+        },
+      },
+    });
+    expect(
+      await service.facilityCounts([facility('A'), facility('B'), facility('C', { health: 'DOWN' })]),
+    ).toEqual({
+      A: { specialtyCount: 1, doctorCount: 1 },
+      B: { doctorCount: 1 },
+    });
+  });
+
   it('chỉ trả bác sĩ của cơ sở DOCTOR/BOTH và đúng chuyên khoa', async () => {
     const rows = [facility('A', { bookingMode: 'SPECIALTY' }), facility('B')];
     const service = new FacilityPublicService({

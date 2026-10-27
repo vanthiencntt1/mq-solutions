@@ -8,6 +8,8 @@ import { apiFetch, ApiError } from '@/components/common/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { IconTile } from '@/components/ui/icon-tile';
 import { Alert, FormField } from '@/components/ui/form-field';
 import {
   FEEDBACK_STATUS,
@@ -42,7 +44,7 @@ interface Props {
 }
 
 const fieldStyle =
-  'border-border bg-card text-ink-navy focus-visible:border-primary h-11 w-full rounded-md border px-3 text-sm';
+  'border-hairline bg-pebble text-ink-navy focus-visible:border-primary min-h-12 w-full rounded-md border px-3 text-base';
 const topics = Object.entries(FEEDBACK_TOPICS) as [FeedbackTopic, string][];
 
 export function FeedbackPanel({ rows, appointments, total, page, pageSize }: Props) {
@@ -76,17 +78,18 @@ export function FeedbackPanel({ rows, appointments, total, page, pageSize }: Pro
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-8 pb-8">
       <header>
-        <p className="text-primary text-sm font-semibold">W08 · TÀI KHOẢN</p>
-        <h1 className="text-ink-navy text-[28px] font-bold">Góp ý & hỗ trợ</h1>
-        <p className="text-slate-gray text-sm">Chia sẻ trải nghiệm hoặc đề nghị chúng tôi hỗ trợ bạn.</p>
+        <h1 className="text-ink-navy text-[38px] leading-tight font-bold md:text-[50px]">Góp ý và hỗ trợ</h1>
+        <p className="text-slate-gray mt-2">Chia sẻ trải nghiệm hoặc đề nghị chúng tôi hỗ trợ bạn.</p>
       </header>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <Card className="h-fit space-y-5 p-4 sm:p-6">
+        <Card variant="panel" className="h-fit min-w-0 space-y-6 p-5 sm:p-7">
           <div className="flex items-center gap-3">
-            <MessageSquareText className="text-primary size-6" aria-hidden />
-            <h2 className="text-ink-navy text-[20px] font-semibold">Gửi góp ý</h2>
+            <IconTile>
+              <MessageSquareText aria-hidden />
+            </IconTile>
+            <h2 className="section-title">Gửi góp ý</h2>
           </div>
           {error ? <Alert tone="danger">{error}</Alert> : null}
           {notice ? <Alert tone="success">{notice}</Alert> : null}
@@ -136,7 +139,7 @@ export function FeedbackPanel({ rows, appointments, total, page, pageSize }: Pro
                 maxLength={2000}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                rows={7}
+                rows={6}
                 className={`${fieldStyle} h-auto min-h-36 py-3`}
                 placeholder="Bạn muốn góp ý hoặc cần hỗ trợ điều gì?"
               />
@@ -146,10 +149,10 @@ export function FeedbackPanel({ rows, appointments, total, page, pageSize }: Pro
             </Button>
           </form>
         </Card>
-        <section className="space-y-4" aria-labelledby="feedback-history">
+        <section className="min-w-0 space-y-4" aria-labelledby="feedback-history">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <h2 id="feedback-history" className="text-ink-navy text-[20px] font-semibold">
+              <h2 id="feedback-history" className="section-title">
                 Lịch sử góp ý
               </h2>
               <p className="text-slate-gray text-sm">{total} góp ý đã gửi</p>
@@ -158,29 +161,40 @@ export function FeedbackPanel({ rows, appointments, total, page, pageSize }: Pro
           {rows.length ? (
             rows.map((row) => <FeedbackCard key={row.id} row={row} />)
           ) : (
-            <Card className="py-10 text-center">
-              <Inbox className="text-slate-gray mx-auto mb-3 size-7" aria-hidden />
-              <p className="font-semibold">Chưa có góp ý</p>
-              <p className="text-slate-gray text-sm">Góp ý của bạn sẽ xuất hiện ở đây sau khi gửi.</p>
-            </Card>
+            <EmptyState
+              icon={Inbox}
+              title="Chưa có góp ý"
+              description="Góp ý của bạn sẽ xuất hiện ở đây sau khi gửi."
+            />
           )}
-          <nav aria-label="Phân trang góp ý" className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-slate-gray">
-              Trang {page} / {Math.max(1, Math.ceil(total / pageSize))}
-            </span>
-            <div className="flex gap-4">
-              {page > 1 ? (
-                <Link className="text-primary font-semibold" href={`?page=${page - 1}`}>
-                  ← Trước
-                </Link>
-              ) : null}
-              {page * pageSize < total ? (
-                <Link className="text-primary font-semibold" href={`?page=${page + 1}`}>
-                  Tiếp →
-                </Link>
-              ) : null}
-            </div>
-          </nav>
+          {total > pageSize ? (
+            <nav
+              aria-label="Phân trang góp ý"
+              className="flex flex-wrap items-center justify-between gap-3 text-sm"
+            >
+              <span className="text-slate-gray">
+                Trang {page} / {Math.max(1, Math.ceil(total / pageSize))}
+              </span>
+              <div className="flex gap-4">
+                {page > 1 ? (
+                  <Link
+                    className="text-primary inline-flex min-h-11 items-center font-semibold"
+                    href={`?page=${page - 1}`}
+                  >
+                    ← Trước
+                  </Link>
+                ) : null}
+                {page * pageSize < total ? (
+                  <Link
+                    className="text-primary inline-flex min-h-11 items-center font-semibold"
+                    href={`?page=${page + 1}`}
+                  >
+                    Tiếp →
+                  </Link>
+                ) : null}
+              </div>
+            </nav>
+          ) : null}
         </section>
       </div>
     </div>
@@ -191,10 +205,10 @@ function FeedbackCard({ row }: { row: Row }) {
   const Icon = row.status === 'DONE' ? CheckCircle2 : row.status === 'IN_PROGRESS' ? Clock3 : CircleHelp;
   const tone = row.status === 'DONE' ? 'success' : row.status === 'IN_PROGRESS' ? 'warning' : 'info';
   return (
-    <Card className="space-y-3 p-4 sm:p-5">
+    <Card className="space-y-3 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-ink-navy font-semibold">{FEEDBACK_TOPICS[row.topic]}</h3>
+          <h3 className="text-ink-navy text-xl font-bold">{FEEDBACK_TOPICS[row.topic]}</h3>
           <p className="text-slate-gray text-xs">
             {formatDateTime(row.createdAt)}
             {row.appointmentCode ? ` · Phiếu ${row.appointmentCode}` : ''}

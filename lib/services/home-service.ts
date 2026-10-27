@@ -2,6 +2,9 @@ import { unstable_cache } from 'next/cache';
 import { z } from 'zod';
 import { FOOTER_COLUMNS, MAIN_NAV, SITE, type NavItem, type PublicShell } from '@/lib/config/site';
 import { prisma } from '@/lib/infra/db/prisma';
+import { redisCache } from '@/lib/infra/redis/client';
+import { getCatalogService } from './catalog';
+import { getHomeSpecialties } from './site-content';
 import { listActiveFacilities, type FacilityCard } from './facility-service';
 
 const contactSchema = z.object({
@@ -134,4 +137,79 @@ const homeService = new HomeService({
 
 export function getHomeService(): HomeService {
   return homeService;
+}
+
+const HOME_STATS_KEY = 'home:stats:v1';
+const HOME_STATS_TTL_SECONDS = 60 * 60;
+
+export interface HomeStatsData {
+  facilityCount: number;
+  specialtyCount?: number;
+  doctorCount?: number;
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Home stats timeout')), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+export interface HomeStatsDependencies {
+  facilities: () => Promise<FacilityCard[]>;
+  specialties: () => Promise<unknown[]>;
+  doctors: (code: string) => Promise<unknown[]>;
+  cache?: {
+    get: (key: string) => Promise<HomeStatsData | null>;
+    set: (key: string, value: HomeStatsData, ttl: number) => Promise<void>;
+  };
+}
+
+/** Số liệu công khai, chỉ tính trên các cơ sở ACTIVE. Thiếu HIS thì ẩn chỉ số tương ứng. */
+export async function getHomeStats(
+  deps: HomeStatsDependencies = {
+    facilities: readActive,
+    specialties: () =>
+      getHomeSpecialties().then((groups) =>
+        groups.filter((group) => group.facilities.some(({ facility }) => !facility.name.includes('(mẫu)'))),
+      ),
+    doctors: (code) => getCatalogService().doctors(code),
+    cache: redisCache,
+  },
+): Promise<HomeStatsData> {
+  if (deps.cache) {
+    const cached = await withTimeout(deps.cache.get(HOME_STATS_KEY), 300).catch(() => null);
+    if (cached) return cached;
+  }
+  const facilities = (await withTimeout(deps.facilities(), 1800).catch(() => [] as FacilityCard[])).filter(
+    (facility) => !facility.name.includes('(mẫu)'),
+  );
+  const result: HomeStatsData = { facilityCount: facilities.length };
+  if (!facilities.length) return result;
+
+  const [specialties, doctors] = await Promise.all([
+    withTimeout(deps.specialties(), 2200)
+      .then((rows) => rows.length)
+      .catch(() => undefined),
+    Promise.allSettled(facilities.map((facility) => withTimeout(deps.doctors(facility.code), 2200))),
+  ]);
+  if (specialties) result.specialtyCount = specialties;
+  if (doctors.every((entry) => entry.status === 'fulfilled')) {
+    result.doctorCount = doctors.reduce(
+      (sum, entry) => sum + (entry.status === 'fulfilled' ? entry.value.length : 0),
+      0,
+    );
+  }
+  if (deps.cache)
+    await withTimeout(deps.cache.set(HOME_STATS_KEY, result, HOME_STATS_TTL_SECONDS), 300).catch(
+      () => undefined,
+    );
+  return result;
 }

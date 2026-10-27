@@ -17,9 +17,9 @@ export const buttonVariants = cva(
         danger: 'bg-destructive text-white hover:bg-destructive/90',
       },
       size: {
-        sm: 'h-9 px-3 text-body-sm',
+        sm: 'h-11 px-3 text-body-sm',
         md: 'h-12 px-4 text-body md:h-11',
-        lg: 'h-12 px-6 text-[18px]',
+        lg: 'h-12 px-6 text-[18px] font-semibold',
         icon: 'size-11',
       },
     },

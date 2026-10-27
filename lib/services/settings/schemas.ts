@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_PRIMARY_COLOR } from '@/lib/config/brand-colors';
 
 // A11 mục 1: chỉ nhận đường dẫn ảnh nội bộ và URL HTTPS để không đưa javascript: vào giao diện công khai.
 const asset = z
@@ -23,7 +24,7 @@ export const settingSchemas = {
     primaryColor: z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
-      .default('#006bff'),
+      .default(DEFAULT_PRIMARY_COLOR),
   }),
   contact: z.strictObject({
     hotline: z

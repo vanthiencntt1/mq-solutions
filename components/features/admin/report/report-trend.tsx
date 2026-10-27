@@ -46,8 +46,14 @@ export function ReportTrend({ rows }: { rows: BookingRow[] }) {
           <title>Xu hướng lượt đặt theo cơ sở, 30 kỳ gần nhất</title>
           {[0, 0.5, 1].map((part) => (
             <g key={part}>
-              <line x1="42" x2="710" y1={195 - part * 165} y2={195 - part * 165} stroke="#d4e0ed" />
-              <text x="4" y={199 - part * 165} fill="#476788" fontSize="11">
+              <line
+                x1="42"
+                x2="710"
+                y1={195 - part * 165}
+                y2={195 - part * 165}
+                stroke="var(--color-hairline)"
+              />
+              <text x="4" y={199 - part * 165} fill="var(--color-slate-gray)" fontSize="11">
                 {Math.round(max * part)}
               </text>
             </g>

@@ -46,7 +46,7 @@ export function RegisterForm({ siteKey }: { siteKey?: string }) {
     return (
       <div className="space-y-4 text-center">
         <CheckCircle2 className="text-success mx-auto size-12" aria-hidden />
-        <h1 className="text-[24px]">Đăng ký thành công</h1>
+        <h1 className="text-[40px] leading-tight font-bold">Đăng ký thành công</h1>
         <p className="text-slate-gray">
           Mật khẩu đã được gửi tới <b className="text-ink-navy">{done}</b>. Kiểm tra cả thư mục Spam / Quảng
           cáo nếu chưa thấy.
@@ -59,9 +59,9 @@ export function RegisterForm({ siteKey }: { siteKey?: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="space-y-5">
       <div className="space-y-1">
-        <h1 className="text-[24px]">Đăng ký tài khoản</h1>
+        <h1 className="text-[40px] leading-tight font-bold">Đăng ký tài khoản</h1>
         <p className="text-body-sm text-slate-gray">
           Một tài khoản CCCD dùng để đặt khám và xem hồ sơ tại mọi cơ sở.
         </p>

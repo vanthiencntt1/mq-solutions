@@ -28,17 +28,20 @@ export function Breadcrumb({
   return (
     <>
       <nav aria-label="Đường dẫn trang" className="text-body-sm text-slate-gray py-4">
-        <ol className="flex flex-wrap items-center gap-2">
+        <ol className="flex min-h-8 flex-wrap items-center gap-2">
           {trail.map((item, index) => (
             <li key={`${item.href ?? item.label}-${index}`} className="flex items-center gap-2">
               {index > 0 && <ChevronRight className="text-mist-gray size-4" aria-hidden />}
               {item.href && index < trail.length - 1 ? (
-                <Link href={item.href} className="text-ink-navy hover:underline">
-                  {index === 0 && <House className="mr-1 inline size-4" aria-hidden />}
+                <Link
+                  href={item.href}
+                  className="text-slate-gray hover:text-primary inline-flex min-h-11 items-center gap-1 rounded-md hover:underline"
+                >
+                  {index === 0 && <House className="size-4 stroke-[1.75]" aria-hidden />}
                   {item.label}
                 </Link>
               ) : (
-                <span className="text-ink-navy font-medium" aria-current="page">
+                <span className="text-ink-navy font-semibold" aria-current="page">
                   {item.label}
                 </span>
               )}

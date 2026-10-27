@@ -43,9 +43,9 @@ export function LoginForm({ siteKey, next }: { siteKey?: string; next: string })
   });
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="space-y-5">
       <div className="space-y-1">
-        <h1 className="text-[24px]">Đăng nhập</h1>
+        <h1 className="text-[40px] leading-tight font-bold">Đăng nhập</h1>
         <p className="text-body-sm text-slate-gray">Dùng số CCCD hoặc số điện thoại đã đăng ký.</p>
       </div>
       {serverError && <Alert tone="danger">{serverError}</Alert>}
@@ -83,7 +83,10 @@ export function LoginForm({ siteKey, next }: { siteKey?: string; next: string })
         <label className="text-body-sm flex items-center gap-2">
           <input type="checkbox" className="accent-primary size-4" {...register('remember')} /> Ghi nhớ 7 ngày
         </label>
-        <Link href="/quen-mat-khau" className="text-body-sm text-primary font-semibold">
+        <Link
+          href="/quen-mat-khau"
+          className="text-body-sm text-primary inline-flex min-h-11 items-center font-semibold"
+        >
           Quên mật khẩu?
         </Link>
       </div>

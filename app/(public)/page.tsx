@@ -24,7 +24,7 @@ import { SITE } from '@/lib/config/site';
 import type { ContentBlocks } from '@/lib/domain/content/blocks';
 import type { SiteBanner, SiteReview } from '@/lib/domain/ports';
 import { getContentService } from '@/lib/services/content';
-import { getHomeService } from '@/lib/services/home-service';
+import { getHomeService, getHomeStats } from '@/lib/services/home-service';
 import {
   composeHomeBlocks,
   getHomeSpecialties,
@@ -35,15 +35,15 @@ import type { HomeBlock } from '@/lib/services/site-content/site-content-service
 
 export const revalidate = 60;
 export const metadata: Metadata = {
-  title: 'Đặt lịch khám trực tuyến tại nhiều cơ sở y tế | MQ Solutions',
+  title: 'Đặt lịch khám trực tuyến tại nhiều cơ sở y tế',
   description: 'Tìm cơ sở y tế, chọn lịch khám và nhận phiếu khám trực tuyến trên MQ Solutions.',
 };
 
 const defaultTypes = [
   'HERO',
+  'PARTNERS',
   'BANNER',
   'SERVICES',
-  'PARTNERS',
   'FACILITIES',
   'SPECIALTIES',
   'STATS',
@@ -85,11 +85,46 @@ function structuredData(base: string, name: string, hotline: string): string {
 
 async function HomeSpecialtyFeed({ data }: { data: SectionData }) {
   // W02 mục 4: chậm ở HIS không giữ phản hồi đầu của hero và lối đặt khám.
-  const groups = await getHomeSpecialties().catch(() => []);
+  const groups = (await getHomeSpecialties().catch(() => []))
+    .map((group) => ({
+      ...group,
+      facilities: group.facilities.filter(({ facility }) => !facility.name.includes('(mẫu)')),
+    }))
+    .filter((group) => group.facilities.length);
   return (
     <HomeSpecialties
       data={data}
       groups={groups.map((group) => ({ slug: group.slug, name: group.name, count: group.facilities.length }))}
+    />
+  );
+}
+
+async function HomeStatsFeed({ data, facilityCount }: { data: SectionData; facilityCount: number }) {
+  if (data.items?.some((item) => item.label && item.value)) {
+    return <HomeStats data={data} facilityCount={facilityCount} />;
+  }
+  const stats = await getHomeStats().catch(() => ({ facilityCount }));
+  return <HomeStats data={data} facilityCount={facilityCount} stats={stats} />;
+}
+
+async function HomeFacilitiesFeed({
+  facilities,
+  data,
+}: {
+  facilities: Awaited<ReturnType<ReturnType<typeof getHomeService>['getFeaturedFacilities']>>;
+  data: SectionData;
+}) {
+  if (!facilities.length) return null;
+  const groups = await getHomeSpecialties().catch(() => []);
+  const counts = new Map<string, number>();
+  for (const group of groups) {
+    for (const { facility } of group.facilities)
+      counts.set(facility.code, (counts.get(facility.code) ?? 0) + 1);
+  }
+  return (
+    <FeaturedFacilities
+      data={data}
+      facilities={facilities.map((facility) => ({ ...facility, specialtyCount: counts.get(facility.code) }))}
     />
   );
 }
@@ -107,8 +142,14 @@ export default async function HomePage() {
       site.testimonials(),
       getSiteSettings(),
     ]);
-  const active = activeResult.status === 'fulfilled' ? activeResult.value : [];
-  const featured = featuredResult.status === 'fulfilled' ? featuredResult.value : [];
+  const active =
+    activeResult.status === 'fulfilled'
+      ? activeResult.value.filter((facility) => !facility.name.includes('(mẫu)'))
+      : [];
+  const featured =
+    featuredResult.status === 'fulfilled'
+      ? featuredResult.value.filter((facility) => !facility.name.includes('(mẫu)'))
+      : [];
   const cmsBlocks = blockResult.status === 'fulfilled' ? blockResult.value : [];
   // W02 mục 2: khi chưa xuất bản khối nào, thứ tự hiện có là cấu hình mặc định.
   const blocks: HomeBlock[] = composeHomeBlocks(cmsBlocks, defaultTypes);
@@ -140,14 +181,21 @@ export default async function HomePage() {
           case 'SERVICES':
             return <HomeServices key={block.id} data={data} />;
           case 'PARTNERS':
-            return <HomePartners key={block.id} facilities={active} />;
+            return <HomePartners key={block.id} facilities={active} data={data} />;
           case 'FACILITIES':
             return (
-              <FeaturedFacilities
+              <Suspense
                 key={block.id}
-                facilities={featured}
-                loadError={featuredResult.status === 'rejected'}
-              />
+                fallback={
+                  <FeaturedFacilities
+                    facilities={featured}
+                    data={data}
+                    loadError={featuredResult.status === 'rejected'}
+                  />
+                }
+              >
+                <HomeFacilitiesFeed facilities={featured} data={data} />
+              </Suspense>
             );
           case 'SPECIALTIES':
             return (
@@ -156,17 +204,21 @@ export default async function HomePage() {
               </Suspense>
             );
           case 'STATS':
-            return <HomeStats key={block.id} data={data} facilityCount={active.length} />;
+            return (
+              <Suspense key={block.id} fallback={<HomeStats data={data} facilityCount={active.length} />}>
+                <HomeStatsFeed data={data} facilityCount={active.length} />
+              </Suspense>
+            );
           case 'TESTIMONIALS':
             return <HomeTestimonials key={block.id} data={data} reviews={reviews} />;
           case 'STEPS':
-            return <HomeSteps key={block.id} />;
+            return <HomeSteps key={block.id} data={data} />;
           case 'BENEFITS':
-            return <HomeBenefits key={block.id} />;
+            return <HomeBenefits key={block.id} data={data} />;
           case 'FAQ':
-            return <HomeFaq key={block.id} />;
+            return <HomeFaq key={block.id} data={data} />;
           case 'NEWS':
-            return <RecentNews key={block.id} items={news} />;
+            return <RecentNews key={block.id} items={news} data={data} />;
           case 'SUPPORT':
             return (
               <HomeSupport
@@ -175,10 +227,11 @@ export default async function HomePage() {
                 email={settings?.contact.email ?? SITE.email}
                 zaloUrl={settings?.contact.zalo ?? ''}
                 facebookUrl={settings?.contact.facebook ?? ''}
+                data={data}
               />
             );
           case 'CTA':
-            return <HomeCta key={block.id} />;
+            return <HomeCta key={block.id} hotline={settings?.contact.hotline ?? SITE.hotline} data={data} />;
           case 'CONTENT':
             return (
               <section key={block.id} className="container-page py-12">

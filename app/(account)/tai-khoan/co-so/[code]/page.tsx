@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { z } from 'zod';
 import { RecordsPanel } from '@/components/features/records/records-panel';
-import { getActiveFacilityByCode } from '@/lib/services/facility-service';
+import { getActiveFacilityByCode, listActiveFacilities } from '@/lib/services/facility-service';
 import { getIdentityService } from '@/lib/services/identity';
 import { requirePageSession } from '@/app/_lib/session';
 
@@ -23,6 +23,16 @@ export default async function RecordsPage({ params }: { params: Promise<{ code: 
     notFound();
   const facility = await getActiveFacilityByCode(code);
   if (!facility) notFound();
-  const identity = await getIdentityService().identify(session.id, facility.code);
-  return <RecordsPanel code={facility.code} name={facility.name} identity={identity} />;
+  const [identity, directory] = await Promise.all([
+    getIdentityService().identify(session.id, facility.code),
+    listActiveFacilities({ take: 100 }),
+  ]);
+  return (
+    <RecordsPanel
+      code={facility.code}
+      name={facility.name}
+      logoUrl={directory.find((f) => f.code === facility.code)?.logoUrl}
+      identity={identity}
+    />
+  );
 }

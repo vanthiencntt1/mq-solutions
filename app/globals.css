@@ -91,6 +91,19 @@
 
   /* Bố cục (10.4) */
   --container-page: 1200px;
+
+  /* Chuyển động duy nhất của trang chủ: thẻ sản phẩm nổi lên một lần khi tải trang */
+  --animate-rise-in: rise-in 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms both;
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 /* Ánh xạ biến shadcn/ui (10.9) */
@@ -115,6 +128,45 @@
   --radius: 8px;
 }
 
+/* Admin shell theme. Semantic tokens also keep existing UI components legible. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #101b2a;
+  --foreground: #e8f0fa;
+  --card: #17273a;
+  --card-foreground: #e8f0fa;
+  --primary: #68a8ff;
+  --primary-hover: #91bdff;
+  --primary-foreground: #0b1a2d;
+  --secondary: #24405d;
+  --secondary-foreground: #f5f9ff;
+  --muted: #21344a;
+  --muted-foreground: #b5c8dc;
+  --accent: #243f60;
+  --accent-foreground: #bfd9ff;
+  --destructive: #ff8585;
+  --border: #38516b;
+  --input: #47617a;
+  --ring: #78aeff;
+  --color-ink-navy: #e8f0fa;
+  --color-signal-blue: #7cb2ff;
+  --color-slate-gray: #b5c8dc;
+  --color-mist-gray: #9ab1c8;
+  --color-cloud: #101b2a;
+  --color-paper: #17273a;
+  --color-pebble: #21344a;
+  --color-hairline: #38516b;
+  --color-deep-cobalt: #bfd9ff;
+  --color-success: #80dab0;
+  --color-success-bg: #173e34;
+  --color-warning: #ffd088;
+  --color-warning-bg: #493720;
+  --color-danger: #ffa3a3;
+  --color-danger-bg: #4a292e;
+  --color-info: #bfd9ff;
+  --color-info-bg: #243f60;
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -130,6 +182,10 @@
   h3,
   h4 {
     @apply text-ink-navy font-bold;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
   :focus-visible {
     @apply ring-ring/40 ring-3 outline-none;
@@ -139,5 +195,27 @@
 @layer components {
   .container-page {
     @apply mx-auto w-full max-w-(--container-page) px-4 md:px-6;
+  }
+
+  /* Tiêu đề mục: cỡ thống nhất cho mọi section công khai */
+  .section-title {
+    @apply text-ink-navy text-heading-sm md:text-heading leading-[1.21] font-bold;
+  }
+
+  .text-display-responsive {
+    @apply md:text-heading-lg xl:text-display text-[42px] leading-[1.15] font-bold;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

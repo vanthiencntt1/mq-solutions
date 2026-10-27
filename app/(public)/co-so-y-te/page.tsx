@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { FacilityCard } from '@/components/features/facility/FacilityCard';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
+import { SectionHeader } from '@/components/ui/section-header';
 import { filterFacilities, getFacilityPublicService } from '@/lib/services/facility-public-service';
 
 export const revalidate = 300;
 export const metadata: Metadata = {
-  title: 'Cơ sở y tế – Đặt lịch khám online | MQ Solutions',
+  title: 'Cơ sở y tế – Đặt lịch khám online',
   description: 'Tìm bệnh viện, phòng khám theo khu vực và đặt lịch khám trực tuyến.',
 };
 
@@ -50,6 +51,7 @@ export default async function Page({
   const page = Number.isInteger(requested) && requested > 0 ? requested : 1;
   const pages = Math.ceil(filtered.length / 12);
   const results = filtered.slice((page - 1) * 12, page * 12);
+  const counts = await getFacilityPublicService().facilityCounts(results);
   const nextParams = new URLSearchParams();
   if (params.q) nextParams.set('q', params.q);
   if (params.tinh) nextParams.set('tinh', params.tinh);
@@ -57,20 +59,20 @@ export default async function Page({
   nextParams.set('trang', String(page + 1));
 
   return (
-    <div className="container-page py-10 md:py-16">
+    <div className="container-page py-12 md:py-16">
       <header className="max-w-3xl">
         <p className="text-info text-sm font-semibold">DANH BẠ CƠ SỞ Y TẾ</p>
-        <h1 className="text-ink-navy mt-3 text-[32px] leading-tight font-bold md:text-[50px]">
+        <h1 className="text-ink-navy md:text-heading-lg mt-3 text-[42px] leading-tight font-bold">
           Tìm nơi khám phù hợp
         </h1>
         <p className="text-slate-gray mt-4 text-lg">
-          Cơ sở y tế hàng đầu giúp trải nghiệm khám chữa bệnh tốt hơn. Lọc theo khu vực hoặc tên để bắt đầu.
+          Xem địa chỉ, chuyên khoa và thông tin đặt khám của từng cơ sở. Tìm theo tên hoặc khu vực để bắt đầu.
         </p>
       </header>
       <form
         action="/co-so-y-te"
         method="get"
-        className="border-border bg-card mt-10 grid gap-4 rounded-2xl border p-4 shadow-sm md:grid-cols-[2fr_1fr_1fr_auto] md:items-end md:p-6"
+        className="border-hairline bg-card mt-10 grid gap-4 rounded-2xl border p-5 shadow-md md:grid-cols-[2fr_1fr_1fr_auto] md:items-end md:p-6"
       >
         <div>
           <Label htmlFor="facility-q">Tên cơ sở</Label>
@@ -118,8 +120,29 @@ export default async function Page({
           <Search aria-hidden /> Tìm cơ sở
         </Button>
       </form>
-      <div className="mt-10 flex items-center justify-between gap-4">
-        <p className="text-slate-gray">{filtered.length} cơ sở phù hợp</p>
+      <nav aria-label="Lọc nhanh loại cơ sở" className="mt-5 flex flex-wrap gap-2">
+        <Link
+          href="/co-so-y-te"
+          className={`min-h-11 rounded-full border px-4 py-2.5 text-sm font-semibold ${!params.loai ? 'border-primary bg-info-bg text-info' : 'border-hairline bg-card text-ink-navy hover:bg-pebble'}`}
+        >
+          Tất cả
+        </Link>
+        {TYPES.map(([value, label]) => (
+          <Link
+            key={value}
+            href={`/co-so-y-te?loai=${value}`}
+            className={`min-h-11 rounded-full border px-4 py-2.5 text-sm font-semibold ${params.loai === value ? 'border-primary bg-info-bg text-info' : 'border-hairline bg-card text-ink-navy hover:bg-pebble'}`}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-12 flex flex-wrap items-end justify-between gap-4">
+        <SectionHeader
+          align="left"
+          title="Các cơ sở y tế"
+          description={`${filtered.length} cơ sở phù hợp với lựa chọn của bạn.`}
+        />
         {(params.q || params.tinh || params.loai) && (
           <Link href="/co-so-y-te" className="text-info text-sm font-semibold hover:underline">
             Xóa bộ lọc
@@ -127,9 +150,9 @@ export default async function Page({
         )}
       </div>
       {results.length ? (
-        <div className="mt-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
           {results.map((facility) => (
-            <FacilityCard key={facility.code} facility={facility} />
+            <FacilityCard key={facility.code} facility={facility} counts={counts[facility.code]} />
           ))}
         </div>
       ) : (

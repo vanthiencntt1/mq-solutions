@@ -35,6 +35,8 @@ const selection = {
   bookingMode: true,
   allowBhyt: true,
   allowSameDay: true,
+  scheduleSource: true,
+  fixedSchedule: true,
   payOptions: true,
   cancelCutoff: true,
   reconcileTime: true,
@@ -47,12 +49,15 @@ const selection = {
 type Selected = Pick<Facility, keyof typeof selection>;
 
 function view(row: Selected, appointmentsToday = 0): FacilityRow {
-  const parsed = FacilityCreateSchema.omit({ status: true }).parse({
+  // Quy tắc nhập liệu (vd. URL phải HTTPS/IP nội bộ) chỉ chặn lúc ADMIN LƯU. Dữ liệu đã có trong DB
+  // (seed, sửa tay, quy tắc đổi sau) vẫn phải đọc được, nếu không trang admin và health-check sẽ hỏng.
+  const result = FacilityCreateSchema.omit({ status: true }).safeParse({
     ...row,
     payProvider: row.payProvider,
     workingHours: row.workingHours,
     introJson: row.introJson,
   });
+  const parsed = result.success ? result.data : (row as unknown as typeof result.data & object);
   return {
     ...parsed,
     status: row.status,
@@ -68,12 +73,23 @@ function createData(input: FacilityCreateInput): Prisma.FacilityCreateInput {
   return {
     ...input,
     introJson: input.introJson ?? Prisma.JsonNull,
+    fixedSchedule: input.fixedSchedule ?? Prisma.JsonNull,
   };
 }
 
-function updateData(changes: (Omit<FacilityUpdateInput, 'confirmPassword'> & { health?: string }) | { status: FacilityRow['status'] }): Prisma.FacilityUpdateInput {
-  const { introJson, ...rest } = changes as Omit<FacilityUpdateInput, 'confirmPassword'> & { status?: FacilityRow['status']; health?: string };
-  return { ...rest, ...(introJson !== undefined ? { introJson: introJson ?? Prisma.JsonNull } : {}) };
+function updateData(
+  changes:
+    (Omit<FacilityUpdateInput, 'confirmPassword'> & { health?: string }) | { status: FacilityRow['status'] },
+): Prisma.FacilityUpdateInput {
+  const { introJson, fixedSchedule, ...rest } = changes as Omit<FacilityUpdateInput, 'confirmPassword'> & {
+    status?: FacilityRow['status'];
+    health?: string;
+  };
+  return {
+    ...rest,
+    ...(introJson !== undefined ? { introJson: introJson ?? Prisma.JsonNull } : {}),
+    ...(fixedSchedule !== undefined ? { fixedSchedule: fixedSchedule ?? Prisma.JsonNull } : {}),
+  };
 }
 
 function todayExamDate(): Date {

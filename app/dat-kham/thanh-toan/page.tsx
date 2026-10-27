@@ -11,5 +11,9 @@ export default async function PaymentPage({ searchParams }: { searchParams: Prom
   const session = await requirePageSession();
   const { code } = z.object({ code: appointmentCodeSchema }).parse(await searchParams);
   const payment = await getPaymentService().getOrCreate(session.id, code);
-  return <PaymentPanel initial={payment} initialNow={Date.now()} />;
+  return (
+    <div className="[&_.section-title]:!text-[20px] md:[&_.section-title]:!text-[24px]">
+      <PaymentPanel initial={payment} initialNow={Date.now()} />
+    </div>
+  );
 }

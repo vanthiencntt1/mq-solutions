@@ -72,7 +72,7 @@ export function TicketActions({
         ) : null}
       </div>
       {showCancel ? (
-        <form onSubmit={cancel} className="border-border bg-muted space-y-3 rounded-xl border p-4">
+        <form onSubmit={cancel} className="border-hairline bg-pebble space-y-3 rounded-xl border p-4 sm:p-5">
           <label htmlFor="cancel-reason" className="block font-semibold">
             Lý do hủy phiếu
           </label>

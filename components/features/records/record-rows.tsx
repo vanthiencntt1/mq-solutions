@@ -20,7 +20,7 @@ export function DetailSection({
 }) {
   return (
     <section className="border-border border-t pt-4">
-      <h3 className="text-[18px] font-semibold">{title}</h3>
+      <h3 className="text-2xl font-bold">{title}</h3>
       {empty ? <p className="text-body-sm text-slate-gray">Chưa có kết quả.</p> : children}
     </section>
   );
@@ -38,10 +38,10 @@ export function RecordRows({
   onDetail: (id: string) => void;
 }) {
   return (
-    <div className="divide-border divide-y">
+    <div className="grid gap-3">
       {tab === 'encounters' &&
         (rows as Encounter[]).map((r) => (
-          <article key={r.id} className="space-y-1 py-4 first:pt-0">
+          <article key={r.id} className="border-hairline bg-paper space-y-2 rounded-xl border p-4">
             <p className="font-semibold">
               {formatDate(r.date)} · {r.room || 'Lần khám'}
             </p>
@@ -50,7 +50,7 @@ export function RecordRows({
               {r.diagnosis || 'Chưa có chẩn đoán'}
             </p>
             <button
-              className="text-body-sm text-deep-cobalt font-semibold underline-offset-4 hover:underline"
+              className="text-body-sm text-deep-cobalt inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
               onClick={() => onDetail(r.id)}
             >
               Xem chi tiết
@@ -59,7 +59,10 @@ export function RecordRows({
         ))}
       {tab === 'tests' &&
         (rows as Test[]).map((r, i) => (
-          <article key={`${r.encounterId}-${i}`} className="space-y-1 py-4 first:pt-0">
+          <article
+            key={`${r.encounterId}-${i}`}
+            className="border-hairline bg-paper space-y-2 rounded-xl border p-4"
+          >
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold">{r.name}</p>
               {r.abnormal && <Badge tone="warning">! Bất thường</Badge>}
@@ -74,7 +77,10 @@ export function RecordRows({
         ))}
       {tab === 'imaging' &&
         (rows as Imaging[]).map((r, i) => (
-          <article key={`${r.encounterId}-${i}`} className="space-y-1 py-4 first:pt-0">
+          <article
+            key={`${r.encounterId}-${i}`}
+            className="border-hairline bg-paper space-y-2 rounded-xl border p-4"
+          >
             <p className="font-semibold">
               {r.name || 'Chẩn đoán hình ảnh'} · {r.date && formatDate(r.date)}
             </p>
@@ -85,7 +91,10 @@ export function RecordRows({
         ))}
       {tab === 'prescriptions' &&
         (rows as Prescription[]).map((r, i) => (
-          <article key={`${r.encounterId}-${i}`} className="space-y-1 py-4 first:pt-0">
+          <article
+            key={`${r.encounterId}-${i}`}
+            className="border-hairline bg-paper space-y-2 rounded-xl border p-4"
+          >
             <p className="font-semibold">{r.name}</p>
             <p className="text-body-sm">
               {r.form && `${r.form} · `}Số lượng: {r.quantity || '—'}
@@ -99,7 +108,7 @@ export function RecordRows({
         (rows as Reexam[]).map((r, i) => (
           <article
             key={`${r.date}-${i}`}
-            className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0"
+            className="border-hairline bg-paper flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
           >
             <div>
               <p className="font-semibold">Hẹn tái khám: {formatDate(r.date)}</p>
@@ -124,7 +133,7 @@ function FileLink({ url }: { url?: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-body-sm text-deep-cobalt font-semibold underline-offset-4 hover:underline"
+      className="text-body-sm text-deep-cobalt inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
     >
       Xem tệp kết quả (hết hạn sau 5 phút)
     </a>

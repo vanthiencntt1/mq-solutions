@@ -5,4 +5,11 @@ export interface HomeFacility {
   address: string;
   provinceName: string;
   logoUrl: string | null;
+  allowOnlinePayment?: boolean;
+}
+
+export interface HomeStatsData {
+  facilityCount: number;
+  specialtyCount?: number;
+  doctorCount?: number;
 }

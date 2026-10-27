@@ -12,7 +12,9 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { FacilityRow } from '@/lib/domain/admin/facility-ports';
 import { FacilityCreateSchema, type FacilityCreateInput } from '@/lib/domain/admin/facility-schemas';
+import { defaultFixedSchedule } from '@/lib/domain/booking/schedule';
 import { formatDateTime } from '@/lib/utils/format';
+import { FixedScheduleEditor } from './fixed-schedule-editor';
 
 type View = FacilityRow & { secretAvailable: boolean; webhookKeyAvailable: boolean };
 type FacilityDraft = Omit<FacilityCreateInput, 'status'> & { status: FacilityRow['status'] };
@@ -55,6 +57,8 @@ const empty: FacilityDraft = {
   bookingMode: 'SPECIALTY',
   allowBhyt: false,
   allowSameDay: false,
+  scheduleSource: 'HIS',
+  fixedSchedule: null,
   payOptions: ['ONLINE', 'AT_FACILITY'],
   cancelCutoff: 'D-1 15:00',
   reconcileTime: '21:00',
@@ -108,6 +112,16 @@ export function FacilityEditor({ initial, editable }: { initial?: View; editable
     } catch {
       setError('Giờ làm việc hoặc giới thiệu phải là JSON hợp lệ.');
       return;
+    }
+    if (draft.scheduleSource === 'FIXED') {
+      if (!draft.fixedSchedule?.doctorId) {
+        setError('Khung giờ cố định: nhập mã bác sĩ mặc định (HIS bắt buộc khi đặt).');
+        return;
+      }
+      if (draft.bookingMode !== 'SPECIALTY') {
+        setError('Khung giờ cố định chỉ dùng với cách chọn "Theo chuyên khoa / phòng khám".');
+        return;
+      }
     }
     const parsed = FacilityCreateSchema.safeParse({ ...draft, status: 'INACTIVE', workingHours: hours, introJson: intro });
     if (!parsed.success) {
@@ -484,6 +498,33 @@ export function FacilityEditor({ initial, editable }: { initial?: View; editable
                   <option value="BOTH">Bệnh nhân tự chọn</option>
                 </select>
               </FormField>
+              <FormField id="schedule-source" label="Nguồn lịch khám">
+                <select
+                  id="schedule-source"
+                  className={selectClass}
+                  value={draft.scheduleSource}
+                  disabled={!editable}
+                  onChange={(e) => {
+                    const next = e.target.value as FacilityCreateInput['scheduleSource'];
+                    setDraft((current) => ({
+                      ...current,
+                      scheduleSource: next,
+                      fixedSchedule:
+                        next === 'FIXED' && !current.fixedSchedule ? { ...defaultFixedSchedule } : current.fixedSchedule,
+                    }));
+                  }}
+                >
+                  <option value="HIS">Theo lịch HIS (DMBSKHAMBENH)</option>
+                  <option value="FIXED">Khung giờ cố định – STT nhỏ nhất</option>
+                </select>
+              </FormField>
+              {draft.scheduleSource === 'FIXED' && draft.fixedSchedule ? (
+                <FixedScheduleEditor
+                  value={draft.fixedSchedule}
+                  editable={editable}
+                  onChange={(next) => set('fixedSchedule', next)}
+                />
+              ) : null}
               <FormField id="cutoff" label="Giờ chốt hủy" hint="Ví dụ D-1 15:00">
                 <Input
                   id="cutoff"

@@ -14,7 +14,7 @@ export function FaqList({ items }: { items: PublicFaq[] }) {
   return (
     <section id="cau-hoi-thuong-gap" className="space-y-6">
       <div>
-        <h2 className="text-[26px] md:text-[38px]">Câu hỏi thường gặp</h2>
+        <h2 className="section-title">Câu hỏi thường gặp</h2>
         <p className="text-slate-gray mt-2">Tìm câu trả lời theo chủ đề hoặc từ khóa.</p>
       </div>
       <label className="relative block max-w-xl">
@@ -29,12 +29,12 @@ export function FaqList({ items }: { items: PublicFaq[] }) {
       </label>
       {groups.map((group) => (
         <div key={group}>
-          <h3 className="mb-3 text-[20px]">{group}</h3>
+          <h3 className="mb-3 text-[24px]">{group}</h3>
           <div className="space-y-3">
             {filtered
               .filter((item) => item.groupName === group)
               .map((item) => (
-                <details key={item.id} className="border-hairline bg-paper rounded-xl border p-4 shadow-sm">
+                <details key={item.id} className="border-hairline bg-paper rounded-xl border p-5 shadow-sm">
                   <summary className="cursor-pointer font-semibold">{item.question}</summary>
                   <div className="mt-4">
                     <BlockRenderer blocks={item.blocks} />

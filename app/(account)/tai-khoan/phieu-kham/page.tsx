@@ -3,6 +3,7 @@ import { requirePageSession } from '@/app/_lib/session';
 import { TicketList } from '@/components/features/ticket/ticket-list';
 import { getIdentityService } from '@/lib/services/identity';
 import { getTicketService } from '@/lib/services/ticket';
+import { listActiveFacilities } from '@/lib/services/facility-service';
 import { ticketListQuerySchema } from '@/lib/services/ticket/ticket-service';
 
 export const metadata: Metadata = { title: 'Phiếu khám', robots: { index: false } };
@@ -14,9 +15,13 @@ export default async function Page({
 }) {
   const session = await requirePageSession();
   const query = ticketListQuerySchema.parse(await searchParams);
-  const [result, facilities] = await Promise.all([
+  const [result, facilities, directory, upcoming, past, cancelled] = await Promise.all([
     getTicketService().list(session.id, query.tab, query.facility, query.page, query.pageSize),
     getIdentityService().listMyFacilities(session.id),
+    listActiveFacilities({ take: 100 }),
+    getTicketService().list(session.id, 'upcoming', query.facility, 1, 1),
+    getTicketService().list(session.id, 'past', query.facility, 1, 1),
+    getTicketService().list(session.id, 'cancelled', query.facility, 1, 1),
   ]);
   return (
     <TicketList
@@ -26,6 +31,8 @@ export default async function Page({
       page={query.page}
       pageSize={query.pageSize}
       facilities={facilities}
+      logos={Object.fromEntries(directory.map((item) => [item.code, item.logoUrl]))}
+      tabCounts={{ upcoming: upcoming.total, past: past.total, cancelled: cancelled.total }}
     />
   );
 }

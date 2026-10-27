@@ -2,13 +2,14 @@
 
 import { BadgeCheck, CircleAlert, RefreshCw, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, apiFetch } from '@/components/common/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { FacilityLogo } from './facility-logo';
 
 // Tra hồ sơ tại một cơ sở – C03. MaBN chỉ hiện dạng che; trình duyệt không giữ MaBN đầy đủ.
 type View = {
@@ -22,14 +23,16 @@ export function FacilityIdentifyCard({
   name,
   address,
   hint,
+  logoUrl,
 }: {
   code: string;
   name: string;
   address?: string;
   hint?: string;
+  logoUrl?: string | null;
 }) {
   const [view, setView] = useState<View | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [maBN, setMaBN] = useState('');
 
@@ -46,17 +49,47 @@ export function FacilityIdentifyCard({
   }
   const identify = (refresh = false) => run(`/api/facilities/${code}/identify`, { refresh });
 
+  // Tự kiểm tra hồ sơ khi mở trang; kết quả định danh đã được cache phía server nên không dồn tải lên HIS.
+  useEffect(() => {
+    void identify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
   return (
-    <Card className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <CardTitle>{name}</CardTitle>
-          {address && <CardDescription>{address}</CardDescription>}
-          {hint && <CardDescription>{hint}</CardDescription>}
+    <Card className="space-y-5 transition-shadow hover:shadow-md">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <FacilityLogo name={name} logoUrl={logoUrl} />
+          <div className="min-w-0 space-y-2">
+            <CardTitle className="text-xl">{name}</CardTitle>
+            {address && <CardDescription>{address}</CardDescription>}
+            {hint && <CardDescription>{hint}</CardDescription>}
+          </div>
         </div>
-        {!view && (
-          <Button variant="outline" disabled={busy} onClick={() => identify()}>
-            {busy ? 'Đang tra cứu…' : 'Tra hồ sơ'}
+      </div>
+      <div className="border-hairline flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        {!view && busy ? (
+          <Badge tone="neutral">
+            <RefreshCw className="size-3.5 animate-spin" aria-hidden /> Đang kiểm tra hồ sơ…
+          </Badge>
+        ) : null}
+        {!view && !busy ? <Badge tone="warning">Chưa kiểm tra được hồ sơ</Badge> : null}
+        {view?.status === 'FOUND' ? (
+          <Badge tone="success">
+            <BadgeCheck className="size-3.5" aria-hidden /> Đã có hồ sơ · Mã BN {view.maBNMasked}
+          </Badge>
+        ) : null}
+        {view?.status === 'MISMATCH' ? <Badge tone="warning">Thông tin chưa khớp</Badge> : null}
+        {view?.status === 'NEW_PATIENT' ? <Badge tone="info">Chưa có hồ sơ</Badge> : null}
+        {view?.status === 'UNAVAILABLE' ? <Badge tone="warning">Chưa kết nối</Badge> : null}
+        {view?.status === 'FOUND' && (
+          <Button asChild>
+            <Link href={`/tai-khoan/co-so/${code}`}>Xem hồ sơ khám bệnh</Link>
+          </Button>
+        )}
+        {!view && !busy && (
+          <Button variant="outline" onClick={() => identify()}>
+            Thử lại
           </Button>
         )}
       </div>
@@ -64,22 +97,11 @@ export function FacilityIdentifyCard({
       {error && <Alert tone="danger">{error}</Alert>}
 
       {view?.status === 'FOUND' && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="success">
-              <BadgeCheck className="size-3.5" aria-hidden /> Đã có hồ sơ
-            </Badge>
-            <span className="text-body-sm text-slate-gray">Mã bệnh nhân {view.maBNMasked}</span>
-            {view.hasVisited && <Badge tone="info">Có thể đặt BHYT</Badge>}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href={`/dat-kham?co-so=${code}`}>Đặt khám</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href={`/tai-khoan/co-so/${code}`}>Xem hồ sơ khám bệnh</Link>
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {view.hasVisited && <Badge tone="info">Có thể đặt BHYT</Badge>}
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/dat-kham?co-so=${code}`}>Đặt khám</Link>
+          </Button>
         </div>
       )}
 
@@ -149,7 +171,7 @@ function ManualMaBN({
       <label htmlFor="maBN" className="text-body-sm font-medium">
         Đã từng khám tại đây? Nhập mã bệnh nhân in trên phiếu khám / hóa đơn
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 sm:flex-nowrap">
         <Input
           id="maBN"
           value={value}

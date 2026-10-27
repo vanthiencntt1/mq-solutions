@@ -111,6 +111,11 @@ enum BookingMode {
   BOTH      // bệnh nhân tự chọn: theo phòng khám hoặc theo bác sĩ
 }
 
+enum ScheduleSource {
+  HIS   // ngày khám từ DMBSKHAMBENH, khung giờ từ btdkp_thoigiankham
+  FIXED // khung giờ cố định cấu hình ở A02; gửi HIS số nhỏ nhất chưa dùng
+}
+
 model Facility {
   id               String         @id @default(uuid()) @db.Uuid
   code             String         @unique                         // BVQ7, BVSIS...
@@ -144,6 +149,9 @@ model Facility {
   bookingMode      BookingMode    @default(SPECIALTY) @map("booking_mode") // chọn theo chuyên khoa hay theo bác sĩ
   allowBhyt        Boolean        @default(false) @map("allow_bhyt")
   allowSameDay     Boolean        @default(false) @map("allow_same_day")
+  // HIS = lịch DMBSKHAMBENH; FIXED = khung giờ cố định của web, STT nhỏ nhất HIS chưa dùng
+  scheduleSource   ScheduleSource @default(HIS) @map("schedule_source")
+  fixedSchedule    Json?          @map("fixed_schedule") // { weekdays, slots[{start,end,fromNumber,toNumber}], doctorId, roomDoctors }
   payOptions       PayMethod[]    @default([ONLINE, AT_FACILITY]) @map("pay_options")
   cancelCutoff     String         @default("D-1 15:00") @map("cancel_cutoff")
   reconcileTime    String         @default("21:00") @map("reconcile_time")

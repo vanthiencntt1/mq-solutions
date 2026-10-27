@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { CalendarClock, ClipboardList, FileImage, FlaskConical, Pill, ArrowLeft } from 'lucide-react';
 import { ApiError, apiFetch } from '@/components/common/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Alert } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
+import { FacilityLogo } from '@/components/features/identity/facility-logo';
 import type {
   Encounter,
   EncounterDetail,
@@ -23,12 +26,12 @@ import { DetailSection, RecordRows, type RecordTab } from './record-rows';
 type Rows = Encounter[] | Test[] | Imaging[] | Prescription[] | Reexam[];
 type IdentityView = { status: 'FOUND' | 'MISMATCH' | 'NEW_PATIENT' | 'UNAVAILABLE'; maBNMasked?: string };
 
-const TABS: { key: RecordTab; label: string }[] = [
-  { key: 'encounters', label: 'Lần khám' },
-  { key: 'tests', label: 'Xét nghiệm' },
-  { key: 'imaging', label: 'CĐHA' },
-  { key: 'prescriptions', label: 'Toa thuốc' },
-  { key: 'reexams', label: 'Tái khám' },
+const TABS: { key: RecordTab; label: string; icon: typeof ClipboardList }[] = [
+  { key: 'encounters', label: 'Lần khám', icon: ClipboardList },
+  { key: 'tests', label: 'Xét nghiệm', icon: FlaskConical },
+  { key: 'imaging', label: 'Chẩn đoán hình ảnh', icon: FileImage },
+  { key: 'prescriptions', label: 'Đơn thuốc', icon: Pill },
+  { key: 'reexams', label: 'Tái khám', icon: CalendarClock },
 ];
 const defaultFrom = () => {
   const now = new Date();
@@ -43,10 +46,12 @@ const futureTo = () => {
 export function RecordsPanel({
   code,
   name,
+  logoUrl,
   identity,
 }: {
   code: string;
   name: string;
+  logoUrl?: string | null;
   identity: IdentityView;
 }) {
   const [tab, setTab] = useState<RecordTab>('encounters');
@@ -101,18 +106,27 @@ export function RecordsPanel({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
+    <div className="min-w-0 space-y-8 pb-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-4">
           <Link
             href="/tai-khoan/co-so"
-            className="text-body-sm text-deep-cobalt underline-offset-4 hover:underline"
+            className="text-body-sm text-deep-cobalt inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline"
           >
-            ← Cơ sở y tế
+            <ArrowLeft className="size-4" aria-hidden /> Cơ sở y tế
           </Link>
-          <h1 className="text-[28px] leading-tight">Hồ sơ khám bệnh</h1>
-          <p className="text-slate-gray">{name}</p>
-          {identity.status === 'FOUND' && <Badge tone="info">Mã bệnh nhân {identity.maBNMasked}</Badge>}
+          <h1 className="text-[38px] leading-tight md:text-[50px]">Hồ sơ khám bệnh</h1>
+          <div className="flex items-center gap-3">
+            <FacilityLogo name={name} logoUrl={logoUrl} />
+            <div>
+              <p className="text-ink-navy font-semibold">{name}</p>
+              {identity.status === 'FOUND' && (
+                <Badge tone="success" className="mt-1">
+                  Đã xác minh · Mã bệnh nhân {identity.maBNMasked}
+                </Badge>
+              )}
+            </div>
+          </div>
         </div>
         <Button asChild>
           <Link href={`/dat-kham?co-so=${encodeURIComponent(code)}`}>Đặt khám</Link>
@@ -122,7 +136,7 @@ export function RecordsPanel({
         <IdentityNotice status={identity.status} />
       ) : (
         <>
-          <nav aria-label="Loại hồ sơ" className="border-border flex gap-2 overflow-x-auto border-b pb-3">
+          <nav aria-label="Loại hồ sơ" className="border-hairline flex gap-2 overflow-x-auto border-b pb-3">
             {TABS.map((item) => (
               <button
                 key={item.key}
@@ -138,13 +152,14 @@ export function RecordsPanel({
                     setTo(today());
                   }
                 }}
-                className={`text-body-sm shrink-0 rounded-md px-4 py-2 font-semibold ${tab === item.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'}`}
+                className={`text-body-sm inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-4 font-semibold ${tab === item.key ? 'bg-primary text-primary-foreground' : 'bg-pebble text-ink-navy hover:bg-info-bg'}`}
               >
+                <item.icon className="size-4" strokeWidth={1.75} aria-hidden />
                 {item.label}
               </button>
             ))}
           </nav>
-          <Card className="space-y-4">
+          <Card variant="panel" className="space-y-5">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <CardTitle>{TABS.find((item) => item.key === tab)?.label}</CardTitle>
@@ -183,13 +198,18 @@ export function RecordsPanel({
             ) : error ? (
               <Alert tone="danger">{error}</Alert>
             ) : rows.length === 0 ? (
-              <p className="text-slate-gray">Chưa có kết quả trong khoảng thời gian này.</p>
+              <EmptyState
+                icon={TABS.find((item) => item.key === tab)?.icon}
+                title="Chưa có kết quả"
+                description="Thử chọn khoảng thời gian khác để xem hồ sơ."
+                className="border-0 shadow-none"
+              />
             ) : (
               <RecordRows tab={tab} rows={rows} code={code} onDetail={openDetail} />
             )}
           </Card>
           {detail && (
-            <Card className="space-y-5" aria-live="polite">
+            <Card variant="panel" className="space-y-5" aria-live="polite">
               <div className="space-y-1">
                 <CardTitle>Chi tiết lần khám</CardTitle>
                 <p>
@@ -204,7 +224,7 @@ export function RecordsPanel({
               <DetailSection title="Chẩn đoán hình ảnh" empty={detail.imaging.length === 0}>
                 <RecordRows tab="imaging" rows={detail.imaging} code={code} onDetail={openDetail} />
               </DetailSection>
-              <DetailSection title="Toa thuốc" empty={detail.prescriptions.length === 0}>
+              <DetailSection title="Đơn thuốc" empty={detail.prescriptions.length === 0}>
                 <RecordRows
                   tab="prescriptions"
                   rows={detail.prescriptions}

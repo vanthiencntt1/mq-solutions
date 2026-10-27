@@ -81,11 +81,17 @@ export class AdminFacilityService {
     if (!Object.keys(diff).length) return publicRow(before, this.d.envHas);
     if (['apiBaseUrl', 'secretRef', 'bankAccountNo'].some((key) => key in diff))
       await this.confirmPassword(actor.id, confirmPassword);
-    const connectionChanged = ['apiBaseUrl', 'secretRef', 'partnerCode', 'timeoutMs'].some((key) => key in diff);
+    const connectionChanged = ['apiBaseUrl', 'secretRef', 'partnerCode', 'timeoutMs'].some(
+      (key) => key in diff,
+    );
     if (connectionChanged) diff.health = { from: before.health, to: 'UNKNOWN' };
-    const row = await this.d.repo.update(id, connectionChanged ? { ...changes, health: 'UNKNOWN' } : changes, actor.id, diff);
-    if (connectionChanged)
-      this.d.invalidateConnection(id);
+    const row = await this.d.repo.update(
+      id,
+      connectionChanged ? { ...changes, health: 'UNKNOWN' } : changes,
+      actor.id,
+      diff,
+    );
+    if (connectionChanged) this.d.invalidateConnection(id);
     return publicRow(row, this.d.envHas);
   }
 
@@ -139,8 +145,13 @@ export class AdminFacilityService {
 
   async checkAll(): Promise<void> {
     const ids = await this.d.repo.activeIds();
-    for (let i = 0; i < ids.length; i += 10)
-      await Promise.all(ids.slice(i, i + 10).map((id) => this.probe(id)));
+    // allSettled: 1 cơ sở lỗi không làm dừng kiểm tra các cơ sở còn lại
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += 10) {
+      const results = await Promise.allSettled(ids.slice(i, i + 10).map((id) => this.probe(id)));
+      failed += results.filter((r) => r.status === 'rejected').length;
+    }
+    if (failed > 0) throw new Error(`Health-check lỗi ở ${failed}/${ids.length} cơ sở`);
   }
 
   async clearCache(actor: AdminPrincipal, id: string) {

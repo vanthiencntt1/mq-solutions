@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { SitePopup } from '@/lib/domain/ports';
+import { DecorBlob } from '@/components/ui/decor-blob';
 
 function storageKey(popup: SitePopup) {
   return `g1-popup:${popup.id}`;
@@ -72,16 +73,17 @@ export function SitePopup({ popups }: { popups: SitePopup[] }) {
   );
   return (
     <div
-      className="fixed right-4 bottom-20 left-4 z-50 sm:left-auto sm:w-80 lg:bottom-6"
+      className="fixed right-4 bottom-20 left-4 isolate z-50 sm:left-auto sm:w-96 lg:bottom-6"
       role="dialog"
       aria-label="Thông báo"
     >
-      <div className="bg-card border-border relative rounded-2xl border p-3 shadow-xl">
+      <DecorBlob tone="cyan" className="-top-5 -right-3 -z-10" />
+      <div className="bg-paper border-hairline relative rounded-2xl border p-4 shadow-lg">
         <button
           type="button"
           onClick={close}
           aria-label="Đóng thông báo"
-          className="bg-card text-ink-navy absolute -top-4 -right-2 grid size-11 place-items-center rounded-full shadow-md"
+          className="border-hairline bg-paper text-ink-navy absolute -top-4 -right-2 grid size-11 place-items-center rounded-lg border shadow-md"
         >
           <X aria-hidden />
         </button>

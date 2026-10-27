@@ -17,7 +17,13 @@ const ENCOUNTER = {
 const FOUND: IdentResult = { status: 'FOUND', maBN: '24000001', checkedAt: NOW.toISOString() };
 
 function setup(
-  opts: { identity?: IdentResult; hisError?: Error; withFile?: boolean; wrongPatient?: boolean } = {},
+  opts: {
+    identity?: IdentResult;
+    hisError?: Error;
+    withFile?: boolean;
+    wrongPatient?: boolean;
+    failMonth?: string;
+  } = {},
 ) {
   const calls: { path: string; body: Record<string, unknown>; timeout?: number }[] = [];
   const audit: { action: string; target?: string; kind?: unknown }[] = [];
@@ -42,7 +48,11 @@ function setup(
       async call<T>(_facility: string, path: string, body: unknown, config?: { timeoutMs?: number }) {
         calls.push({ path, body: body as Record<string, unknown>, timeout: config?.timeoutMs });
         if (opts.hisError) throw opts.hisError;
-        if (path === 'MedicalRecords/GetEncounter') return [ENCOUNTER] as T;
+        if (path === 'MedicalRecords/GetEncounter') {
+          const month = (body as { MMyy: string }).MMyy;
+          if (month === opts.failMonth) throw new AppError('HIS_ERROR');
+          return (month === '1026' ? [ENCOUNTER] : []) as T;
+        }
         if (path === 'MedicalRecords/GetTestResults')
           return [
             {
@@ -119,11 +129,13 @@ describe('RecordsService – C04', () => {
     const second = await service.encounters('account-1', 'BVA');
     expect(first).toEqual(second);
     expect(JSON.stringify(first)).not.toContain('24000001');
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.body.PatientCode).toBe('24000001');
-    expect(calls[0]?.timeout).toBe(10_000);
+    expect(first).toHaveLength(1);
+    // Tra từng tháng trong 12 tháng gần nhất; lượt thứ hai lấy từ cache.
+    expect(calls).toHaveLength(12);
+    expect(calls.map((c) => c.body.MMyy)).toContain('1026');
+    expect(calls.every((c) => c.body.PatientCode === '24000001' && c.timeout === 10_000)).toBe(true);
     expect([...cache.values()][0]).toMatch(/^ENC:/);
-    expect(ttls).toEqual([RECORDS_TTL_SECONDS]);
+    expect(ttls).toEqual(Array(12).fill(RECORDS_TTL_SECONDS));
     expect(audit).toHaveLength(2);
     expect(audit[0]).toMatchObject({ action: 'VIEW_RECORD', kind: 'encounters' });
     expect(audit[0]?.target).not.toContain('24000001');
@@ -172,7 +184,12 @@ describe('RecordsService – C04', () => {
     await expect(service.encounters('account-1', 'BVA')).rejects.toMatchObject({ code: 'HIS_UNAVAILABLE' });
     expect(audit).toHaveLength(0);
     expect(cache.size).toBe(0);
-    expect(calls).toHaveLength(2); // API đọc thử lại một lần
+    expect(calls).toHaveLength(24); // 12 tháng, mỗi tháng thử lại một lần
+  });
+
+  it('một tháng HIS lỗi (thiếu bảng tháng) vẫn hiện các lần khám của tháng khác', async () => {
+    const { service } = setup({ failMonth: '1125' });
+    expect(await service.encounters('account-1', 'BVA')).toMatchObject([{ room: 'Phòng Nội' }]);
   });
 
   it('loại dòng kết quả HIS có PatientCode khác MaBN đã định danh', async () => {

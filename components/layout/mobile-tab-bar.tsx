@@ -24,7 +24,7 @@ export function MobileTabBar({
   return (
     <nav
       aria-label="Điều hướng nhanh"
-      className="border-border bg-card fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="border-hairline bg-card fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] shadow-lg lg:hidden"
     >
       <ul className="grid grid-cols-5">
         {TABS.map(({ href, label, icon: Icon }) => (
@@ -37,16 +37,16 @@ export function MobileTabBar({
                   ? 'page'
                   : undefined
               }
-              className="text-caption text-slate-gray hover:text-primary aria-[current=page]:text-primary flex h-16 flex-col items-center justify-center gap-1"
+              className="group text-caption text-slate-gray hover:text-primary aria-[current=page]:text-primary flex min-h-[68px] flex-col items-center justify-center gap-0.5 px-0.5 font-medium"
             >
-              <span className="relative">
-                <Icon className="size-5" aria-hidden />
+              <span className="group-aria-[current=page]:bg-info-bg relative rounded-lg p-1">
+                <Icon className="size-5 stroke-[1.75]" aria-hidden />
                 {((href === '/tai-khoan/phieu-kham' && hasNewAppointments) ||
                   (href === '/tai-khoan/thong-bao' && hasUnreadNotifications)) && (
                   <span className="bg-danger absolute -top-1 -right-1 size-2 rounded-full" aria-hidden />
                 )}
               </span>
-              <span className="truncate">{label}</span>
+              <span className="max-w-full truncate">{label}</span>
             </Link>
           </li>
         ))}

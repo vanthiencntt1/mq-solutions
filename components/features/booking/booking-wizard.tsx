@@ -1,6 +1,16 @@
 'use client';
 
-import { CalendarDays, CircleAlert, Clock3, Hospital, LoaderCircle, Stethoscope } from 'lucide-react';
+import {
+  CalendarDays,
+  CircleAlert,
+  Clock3,
+  Hospital,
+  LoaderCircle,
+  MapPin,
+  Stethoscope,
+  UserRound,
+} from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, apiFetch } from '@/components/common/api-client';
@@ -9,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert } from '@/components/ui/form-field';
 import { Input, Label } from '@/components/ui/input';
+import { specialtyIcon } from '@/components/features/specialty/specialty-icon';
 import { bookingDraftInput } from '@/lib/domain/booking/draft';
 import {
   priceFor,
@@ -20,6 +31,8 @@ import {
 } from '@/lib/domain/booking/schedule';
 import { formatMoney } from '@/lib/utils/format';
 import { BookingStepper } from './booking-stepper';
+import { BookingSummary } from './booking-summary';
+import { BookingPanelHeading } from './booking-panel-heading';
 
 type Slot = { id: number; label: string; remaining: number };
 const pendingKey = 'mq:c05:pending';
@@ -43,7 +56,7 @@ function Chip({
       disabled={disabled}
       aria-pressed={active}
       onClick={onClick}
-      className={`focus-visible:ring-primary min-h-12 rounded-full border px-4 py-2 text-left text-sm focus-visible:ring-2 ${disabled ? 'border-hairline bg-pebble text-slate-gray' : active ? 'border-primary bg-primary text-white' : 'border-hairline text-ink-navy hover:bg-pebble bg-white'}`}
+      className={`focus-visible:ring-primary min-h-12 rounded-full border px-4 py-2 text-left text-sm focus-visible:ring-2 ${disabled ? 'border-hairline bg-pebble text-slate-gray' : active ? 'border-primary bg-primary text-primary-foreground' : 'border-hairline text-ink-navy hover:bg-pebble bg-card'}`}
     >
       {children}
     </button>
@@ -58,12 +71,19 @@ function Loading() {
   );
 }
 
+function SpecialtyChipIcon({ name }: { name: string }) {
+  const Icon = specialtyIcon(name);
+  return <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />;
+}
+
 // C05 mục 2–5: chặng chọn lịch dùng cùng token và luôn hiện rõ trạng thái trống/lỗi.
 export function BookingWizard({
   facilities,
+  facilityLogos,
   initialCode,
 }: {
   facilities: CatalogFacility[];
+  facilityLogos?: Record<string, string | null>;
   initialCode?: string;
 }) {
   const router = useRouter();
@@ -266,201 +286,273 @@ export function BookingWizard({
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-16">
+    <div className="space-y-8 pb-16">
       <BookingStepper />
       <header className="space-y-2">
-        <p className="text-primary text-sm font-semibold">CHẶNG 1 / 4</p>
-        <h1 className="text-ink-navy text-3xl font-bold">Chọn lịch khám</h1>
+        <p className="text-primary text-sm font-semibold">BƯỚC 1 / 4</p>
+        <h1 className="text-ink-navy md:text-heading-sm text-[40px] leading-tight font-bold">
+          Chọn lịch khám
+        </h1>
         <p className="text-slate-gray">Chọn cơ sở, chuyên khoa, ngày và khung giờ phù hợp với bạn.</p>
       </header>
-      {error && (
-        <Alert tone="danger">
-          <CircleAlert className="mr-2 inline size-4" aria-hidden />
-          {error}
-        </Alert>
-      )}
-      <Card className="space-y-4">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Hospital className="text-primary size-5" aria-hidden />
-          1. Cơ sở khám
-        </h2>
-        <Label htmlFor="facility">Cơ sở y tế</Label>
-        <select
-          id="facility"
-          value={code}
-          onChange={(e) => {
-            setCode(e.target.value);
-            router.replace(`/dat-kham?co-so=${encodeURIComponent(e.target.value)}`);
-          }}
-          className="border-hairline bg-card focus-visible:ring-primary h-11 w-full rounded-md border px-3 focus-visible:ring-2"
-        >
-          <option value="">Chọn cơ sở</option>
-          {facilities.map((f) => (
-            <option key={f.code} value={f.code}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-        {facility && <p className="text-slate-gray text-sm">{facility.address}</p>}
-      </Card>
-      {code && (
-        <Card className="space-y-5">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Stethoscope className="text-primary size-5" aria-hidden />
-            2. Chuyên khoa và phòng khám
-          </h2>
-          <Label htmlFor="specialty-search">Tìm chuyên khoa</Label>
-          <Input
-            id="specialty-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Nhập tên chuyên khoa"
-          />
-          {busy === 'specialties' ? (
-            <Loading />
-          ) : visible.length === 0 ? (
-            <p className="text-slate-gray">Chưa có chuyên khoa phù hợp.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {visible.map((s) => (
-                <Chip key={s.id} active={specialtyId === s.id} onClick={() => setSpecialtyId(s.id)}>
-                  {s.name}
-                </Chip>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
+          {error && (
+            <Alert tone="danger">
+              <CircleAlert className="mr-2 inline size-4" aria-hidden />
+              {error}
+            </Alert>
+          )}
+          <Card variant="panel" className="space-y-5">
+            <BookingPanelHeading icon={Hospital} title="1. Cơ sở khám" />
+            <Label htmlFor="facility">Cơ sở y tế</Label>
+            <select
+              id="facility"
+              tabIndex={-1}
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                router.replace(`/dat-kham?co-so=${encodeURIComponent(e.target.value)}`);
+              }}
+              className="sr-only"
+            >
+              <option value="">Chọn cơ sở</option>
+              {facilities.map((f) => (
+                <option key={f.code} value={f.code}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <div className="grid gap-3 md:grid-cols-2">
+              {facilities.map((f) => (
+                <button
+                  key={f.code}
+                  type="button"
+                  aria-pressed={code === f.code}
+                  onClick={() => {
+                    setCode(f.code);
+                    router.replace(`/dat-kham?co-so=${encodeURIComponent(f.code)}`);
+                  }}
+                  className={`border-hairline hover:bg-pebble flex min-h-24 items-start gap-3 rounded-xl border p-4 text-left transition-colors ${code === f.code ? 'border-primary bg-info-bg ring-primary ring-2' : 'bg-card'}`}
+                >
+                  <span className="bg-pebble border-hairline grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border">
+                    {facilityLogos?.[f.code] ? (
+                      <Image
+                        src={facilityLogos[f.code]!}
+                        alt=""
+                        width={48}
+                        height={48}
+                        unoptimized
+                        className="size-full object-contain"
+                      />
+                    ) : (
+                      <Hospital className="text-primary size-6" strokeWidth={1.75} aria-hidden />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <strong className="block leading-snug">{f.name}</strong>
+                    <span className="text-slate-gray mt-1 block text-sm leading-5">{f.address}</span>
+                  </span>
+                </button>
               ))}
             </div>
-          )}
-          {specialtyId && (
-            <div className="border-hairline space-y-4 border-t pt-5">
-              {facility?.bookingMode === 'BOTH' && doctors.length > 0 && (
-                <div className="flex gap-2" role="tablist" aria-label="Cách chọn lịch">
-                  <Button
-                    variant={mode === 'ROOM' ? 'primary' : 'outline'}
-                    role="tab"
-                    aria-selected={mode === 'ROOM'}
-                    onClick={() => {
-                      setMode('ROOM');
-                      setDoctorId('');
-                    }}
-                  >
-                    Theo phòng khám
-                  </Button>
-                  <Button
-                    variant={mode === 'DOCTOR' ? 'primary' : 'outline'}
-                    role="tab"
-                    aria-selected={mode === 'DOCTOR'}
-                    onClick={() => {
-                      setMode('DOCTOR');
-                      setRoomId(undefined);
-                    }}
-                  >
-                    Theo bác sĩ
-                  </Button>
-                </div>
-              )}
-              {busy === 'choices' ? (
+            {facility && (
+              <p className="text-slate-gray flex items-start gap-2 text-sm md:hidden">
+                <MapPin className="size-4 shrink-0" aria-hidden />
+                {facility.address}
+              </p>
+            )}
+          </Card>
+          {code && (
+            <Card variant="panel" className="space-y-5">
+              <BookingPanelHeading icon={Stethoscope} title="2. Chuyên khoa và phòng khám" />
+              <Label htmlFor="specialty-search">Tìm chuyên khoa</Label>
+              <Input
+                id="specialty-search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Nhập tên chuyên khoa"
+              />
+              {busy === 'specialties' ? (
                 <Loading />
-              ) : mode === 'ROOM' ? (
-                rooms.length === 0 ? (
-                  <p className="text-slate-gray">Khoa này chưa có phòng khám.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {rooms.map((r) => (
-                      <Chip key={r.id} active={roomId === r.id} onClick={() => setRoomId(r.id)}>
-                        {r.name} · {formatMoney(r.priceDv)}
-                      </Chip>
-                    ))}
-                  </div>
-                )
-              ) : doctors.length === 0 ? (
-                <p className="text-slate-gray">Khoa này chưa có lịch bác sĩ. Bạn có thể chọn phòng khám.</p>
+              ) : visible.length === 0 ? (
+                <p className="text-slate-gray">Chưa có chuyên khoa phù hợp.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {doctors.map((d) => (
-                    <Chip key={d.id} active={doctorId === d.id} onClick={() => setDoctorId(d.id)}>
-                      {d.name}
-                      {d.title ? ` · ${d.title}` : ''}
+                  {visible.map((s) => (
+                    <Chip key={s.id} active={specialtyId === s.id} onClick={() => setSpecialtyId(s.id)}>
+                      <span className="flex items-center gap-2">
+                        <SpecialtyChipIcon name={s.name} />
+                        {s.name}
+                      </span>
                     </Chip>
                   ))}
                 </div>
               )}
-            </div>
+              {specialtyId && (
+                <div className="border-hairline space-y-4 border-t pt-5">
+                  {facility?.bookingMode === 'BOTH' && doctors.length > 0 && (
+                    <div className="flex gap-2" role="tablist" aria-label="Cách chọn lịch">
+                      <Button
+                        variant={mode === 'ROOM' ? 'primary' : 'outline'}
+                        role="tab"
+                        aria-selected={mode === 'ROOM'}
+                        onClick={() => {
+                          setMode('ROOM');
+                          setDoctorId('');
+                        }}
+                      >
+                        Theo phòng khám
+                      </Button>
+                      <Button
+                        variant={mode === 'DOCTOR' ? 'primary' : 'outline'}
+                        role="tab"
+                        aria-selected={mode === 'DOCTOR'}
+                        onClick={() => {
+                          setMode('DOCTOR');
+                          setRoomId(undefined);
+                        }}
+                      >
+                        Theo bác sĩ
+                      </Button>
+                    </div>
+                  )}
+                  {busy === 'choices' ? (
+                    <Loading />
+                  ) : mode === 'ROOM' ? (
+                    rooms.length === 0 ? (
+                      <p className="text-slate-gray">Khoa này chưa có phòng khám.</p>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {rooms.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            aria-pressed={roomId === r.id}
+                            onClick={() => setRoomId(r.id)}
+                            className={`border-hairline min-h-20 rounded-xl border p-4 text-left ${roomId === r.id ? 'border-primary bg-info-bg ring-primary ring-2' : 'bg-card hover:bg-pebble'}`}
+                          >
+                            <strong className="block">{r.name}</strong>
+                            <span className="text-slate-gray mt-1 block text-sm">
+                              Giá dịch vụ ngày thường: {formatMoney(r.priceDv)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  ) : doctors.length === 0 ? (
+                    <p className="text-slate-gray">
+                      Khoa này chưa có lịch bác sĩ. Bạn có thể chọn phòng khám.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {doctors.map((d) => (
+                        <Chip key={d.id} active={doctorId === d.id} onClick={() => setDoctorId(d.id)}>
+                          {d.name}
+                          {d.title ? ` · ${d.title}` : ''}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
-      {(roomId || doctorId) && (
-        <Card className="space-y-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <CalendarDays className="text-primary size-5" aria-hidden />
-            3. Ngày khám
-          </h2>
-          {busy === 'schedules' ? (
-            <Loading />
-          ) : dates.length === 0 ? (
-            <p className="text-slate-gray">Chưa có lịch trong 14 ngày tới.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {dates.map((d) => {
-                const day = new Date(`${d}T00:00:00Z`);
-                const weekday = day.getUTCDay();
-                return (
-                  <Chip key={d} active={date === d} onClick={() => setDate(d)}>
-                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][weekday]} {d.slice(8)}/{d.slice(5, 7)}
-                    {weekday === 0 || weekday === 6 ? ' · Cuối tuần' : ''}
-                  </Chip>
-                );
-              })}
-            </div>
+          {(roomId || doctorId) && (
+            <Card variant="panel" className="space-y-4">
+              <BookingPanelHeading icon={CalendarDays} title="3. Ngày khám" />
+              {busy === 'schedules' ? (
+                <Loading />
+              ) : dates.length === 0 ? (
+                <p className="text-slate-gray">Chưa có lịch trong 14 ngày tới.</p>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {dates.map((d) => {
+                    const day = new Date(`${d}T00:00:00Z`);
+                    const weekday = day.getUTCDay();
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={date === d}
+                        onClick={() => setDate(d)}
+                        className={`border-hairline min-h-20 min-w-20 shrink-0 rounded-xl border p-3 text-center ${date === d ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-ink-navy hover:bg-pebble'}`}
+                      >
+                        <span className="block text-sm">
+                          {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][weekday]}
+                        </span>
+                        <strong className="block text-lg">
+                          {d.slice(8)}/{d.slice(5, 7)}
+                        </strong>
+                        {(weekday === 0 || weekday === 6) && <span className="block text-xs">Cuối tuần</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
-      {date && (
-        <Card className="space-y-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Clock3 className="text-primary size-5" aria-hidden />
-            4. Khung giờ
-          </h2>
-          {busy === 'slots' ? (
-            <Loading />
-          ) : slots.length === 0 ? (
-            <p className="text-slate-gray">Ngày này chưa có khung giờ.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {slots.map((s) => (
-                <Chip
-                  key={s.id}
-                  active={slotId === s.id}
-                  disabled={s.remaining === 0}
-                  onClick={() => setSlotId(s.id)}
-                >
-                  {s.label} · {s.remaining === 0 ? 'Đã đầy' : `Còn ${s.remaining} chỗ`}
+          {date && (
+            <Card variant="panel" className="space-y-4">
+              <BookingPanelHeading icon={Clock3} title="4. Khung giờ" />
+              {busy === 'slots' ? (
+                <Loading />
+              ) : slots.length === 0 ? (
+                <p className="text-slate-gray">Ngày này chưa có khung giờ.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {slots.map((s) => (
+                    <Chip
+                      key={s.id}
+                      active={slotId === s.id}
+                      disabled={s.remaining === 0}
+                      onClick={() => setSlotId(s.id)}
+                    >
+                      {s.label} · {s.remaining === 0 ? 'Đã đầy' : `Còn ${s.remaining} chỗ`}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+          {slotId && (
+            <Card variant="panel" className="space-y-4">
+              <BookingPanelHeading icon={UserRound} title="Đối tượng khám" />
+              <div className="flex gap-2">
+                <Chip active={objectType === 'DICH_VU'} onClick={() => setObjectType('DICH_VU')}>
+                  Dịch vụ
                 </Chip>
-              ))}
-            </div>
+                {facility?.allowBhyt && bhytEligible && (
+                  <Chip active={objectType === 'BHYT'} onClick={() => setObjectType('BHYT')}>
+                    BHYT
+                  </Chip>
+                )}
+              </div>
+              {room && date && (
+                <p className="font-semibold">Giá dự kiến: {formatMoney(priceFor(room, date, objectType))}</p>
+              )}
+            </Card>
           )}
-        </Card>
-      )}
-      {slotId && (
-        <Card className="space-y-4">
-          <h2 className="text-lg font-semibold">Đối tượng khám</h2>
-          <div className="flex gap-2">
-            <Chip active={objectType === 'DICH_VU'} onClick={() => setObjectType('DICH_VU')}>
-              Dịch vụ
-            </Chip>
-            {facility?.allowBhyt && bhytEligible && (
-              <Chip active={objectType === 'BHYT'} onClick={() => setObjectType('BHYT')}>
-                BHYT
-              </Chip>
-            )}
+          <div className="flex justify-end">
+            <Button disabled={!slotId || !room || busy === 'submit'} onClick={proceed}>
+              {busy === 'submit' && <LoaderCircle className="size-4 animate-spin" aria-hidden />}Tiếp tục
+            </Button>
           </div>
-          {room && date && (
-            <p className="font-semibold">Giá dự kiến: {formatMoney(priceFor(room, date, objectType))}</p>
-          )}
-        </Card>
-      )}
-      <div className="flex justify-end">
-        <Button disabled={!slotId || !room || busy === 'submit'} onClick={proceed}>
-          {busy === 'submit' && <LoaderCircle className="size-4 animate-spin" aria-hidden />}Tiếp tục
-        </Button>
+        </div>
+        <aside aria-label="Tóm tắt lịch khám" className="lg:sticky lg:top-24">
+          <BookingSummary
+            data={{
+              facilityName: facility?.name,
+              facilityLogoUrl: facility ? facilityLogos?.[facility.code] : null,
+              facilityAddress: facility?.address,
+              specialtyName: specialty?.name,
+              date: date ? `${date.slice(8)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : undefined,
+              time: slot?.label,
+              roomName: room?.name,
+              amount: room && date ? priceFor(room, date, objectType) : undefined,
+            }}
+          />
+        </aside>
       </div>
     </div>
   );

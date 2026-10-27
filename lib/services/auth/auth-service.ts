@@ -9,7 +9,7 @@ import type {
   UpdateProfileInput,
 } from '@/lib/domain/account/schemas';
 import { AppError } from '@/lib/domain/errors';
-import { formatDateTime, maskCccd, maskEmail } from '@/lib/utils/format';
+import { formatDateTime, maskCccd, maskEmail, maskName, maskPhone } from '@/lib/utils/format';
 import {
   accountCreatedMail,
   emailChangedMail,
@@ -44,11 +44,11 @@ export interface SessionAccount {
 }
 
 export interface Profile {
-  fullName: string;
+  nameMasked: string;
   birthYear: number;
   gender: number;
   cccdMasked: string;
-  phone: string;
+  phoneMasked: string;
   email: string;
   addressLine: string;
   insuranceNoMasked: string;
@@ -345,11 +345,11 @@ export class AuthService {
   private toProfile(a: AccountRecord): Profile {
     const ins = a.insuranceNoEnc ? this.d.pii.decrypt(a.insuranceNoEnc) : '';
     return {
-      fullName: a.fullName,
+      nameMasked: maskName(a.fullName),
       birthYear: a.birthYear,
       gender: a.gender,
       cccdMasked: maskCccd(this.d.pii.decrypt(a.cccdEnc)),
-      phone: a.phone,
+      phoneMasked: maskPhone(a.phone),
       email: a.email,
       addressLine: a.addressLine ?? '',
       insuranceNoMasked: ins ? `${ins.slice(0, 2)}********${ins.slice(-5)}` : '',

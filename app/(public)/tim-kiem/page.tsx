@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
-import { ArrowLeft, ArrowRight, CircleAlert, CircleHelp, SearchX } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft, ArrowRight, CircleAlert, FileText, Search, SearchX, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { SearchBox } from '@/components/features/search/search-box';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { IconTile } from '@/components/ui/icon-tile';
+import { SpecialtyIcon } from '@/components/features/specialty/specialty-icon';
 import { Alert } from '@/components/ui/form-field';
 import { SITE } from '@/lib/config/site';
 import { AppError } from '@/lib/domain/errors';
@@ -11,6 +15,7 @@ import { searchQuerySchema } from '@/lib/domain/search/query';
 import type { SearchGroup, SearchPage, SearchType } from '@/lib/domain/search/types';
 import { hashIp } from '@/lib/services/auth';
 import { getSearchService } from '@/lib/services/search';
+import { getFacilityPublicService } from '@/lib/services/facility-public-service';
 
 export const metadata: Metadata = { title: 'Tìm kiếm' };
 export const dynamic = 'force-dynamic';
@@ -36,54 +41,54 @@ function pageHref(q: string, type: SearchType, page = 1) {
   return `/tim-kiem?${params}`;
 }
 
-function Results({ result }: { result: SearchPage }) {
+function Results({ result, logos }: { result: SearchPage; logos: Record<string, string> }) {
   if (result.total === 0) {
     return (
-      <Card className="text-center">
-        <SearchX className="text-muted-foreground mx-auto mb-3 size-8" aria-hidden="true" />
-        <h2 className="text-xl font-semibold">Chưa tìm thấy kết quả phù hợp</h2>
-        <p className="text-muted-foreground mt-2">
-          Thử từ khóa “Nhi”, “Nội tiết” hoặc tên cơ sở. Cần hỗ trợ? Gọi{' '}
-          <a className="font-semibold underline" href={`tel:${SITE.hotline.replace(/\s/g, '')}`}>
-            {SITE.hotline}
+      <EmptyState
+        icon={SearchX}
+        title="Chưa tìm thấy kết quả phù hợp"
+        description="Thử tên chuyên khoa, tên cơ sở hoặc từ khóa khác."
+        action={
+          <a className="text-primary font-semibold underline" href={`tel:${SITE.hotline.replace(/\s/g, '')}`}>
+            Cần hỗ trợ? Gọi {SITE.hotline}
           </a>
-          .
-        </p>
-      </Card>
+        }
+      />
     );
   }
 
   if (Object.values(result.groups).every((items) => items.length === 0)) {
     return (
-      <Card className="text-center">
-        <SearchX className="text-muted-foreground mx-auto mb-3 size-8" aria-hidden="true" />
-        <p>Trang này không còn kết quả. Vui lòng quay lại trang trước.</p>
-        <Link
-          className="text-primary mt-3 inline-block font-semibold underline"
-          href={pageHref(result.query, result.type, Math.max(1, result.page - 1))}
-        >
-          Trang trước
-        </Link>
-      </Card>
+      <EmptyState
+        icon={SearchX}
+        title="Trang này chưa có kết quả"
+        description="Quay lại trang trước để xem các kết quả khác."
+        action={
+          <Link
+            className="text-primary font-semibold underline"
+            href={pageHref(result.query, result.type, Math.max(1, result.page - 1))}
+          >
+            Trang trước
+          </Link>
+        }
+      />
     );
   }
 
   return (
     <>
-      <p className="text-body-sm text-muted-foreground mb-6">
+      <p className="text-slate-gray mb-8">
         Tìm thấy {result.total} kết quả cho “{result.query}”
       </p>
-      <div className="space-y-8">
+      <div className="space-y-12">
         {GROUPS.map(
           ({ type, title }) =>
             result.groups[type].length > 0 && (
               <section key={type} aria-labelledby={`group-${type}`}>
-                <div className="mb-3 flex items-baseline justify-between gap-3">
-                  <h2 id={`group-${type}`} className="text-foreground text-xl font-semibold">
+                <div className="mb-5 flex items-baseline justify-between gap-3">
+                  <h2 id={`group-${type}`} className="section-title">
                     {title}{' '}
-                    <span className="text-muted-foreground text-base font-normal">
-                      ({result.totals[type]})
-                    </span>
+                    <span className="text-slate-gray text-base font-normal">({result.totals[type]})</span>
                   </h2>
                   {result.type === 'all' && result.totals[type] > result.pageSize && (
                     <Link
@@ -94,24 +99,55 @@ function Results({ result }: { result: SearchPage }) {
                     </Link>
                   )}
                 </div>
-                <ul className="grid gap-3 md:grid-cols-2">
+                <ul className="grid gap-4 md:grid-cols-2">
                   {result.groups[type].map((item) => (
                     <li key={`${type}:${item.href}:${item.title}`}>
-                      <Card className="h-full p-4 transition-shadow hover:shadow-md md:p-6">
-                        <Link
-                          href={item.href}
-                          className="text-foreground hover:text-primary focus-visible:outline-primary text-lg font-semibold focus-visible:outline-2"
-                        >
-                          {item.title}
-                        </Link>
-                        {item.context && (
-                          <p className="text-body-sm text-muted-foreground mt-2">{item.context}</p>
+                      <Card className="flex h-full min-w-0 items-start gap-4 p-5 transition-shadow hover:shadow-md md:p-6">
+                        {type === 'facilities' && logos[item.href] ? (
+                          <span className="border-hairline bg-paper relative size-12 shrink-0 overflow-hidden rounded-xl border">
+                            <Image
+                              src={logos[item.href]!}
+                              alt=""
+                              fill
+                              unoptimized
+                              className="object-contain p-1"
+                            />
+                          </span>
+                        ) : type === 'specialties' ? (
+                          <IconTile>
+                            <SpecialtyIcon name={item.title} />
+                          </IconTile>
+                        ) : type === 'doctors' ? (
+                          <IconTile>
+                            <span className="text-lg font-bold" aria-hidden>
+                              {item.title
+                                .trim()
+                                .split(/\s+/)
+                                .slice(-2)
+                                .map((word) => word.charAt(0))
+                                .join('')
+                                .toUpperCase()}
+                            </span>
+                          </IconTile>
+                        ) : (
+                          <IconTile>
+                            {type === 'posts' ? <FileText aria-hidden /> : <Search aria-hidden />}
+                          </IconTile>
                         )}
-                        {item.description && item.description !== item.context && (
-                          <p className="text-body-sm text-muted-foreground mt-2 line-clamp-2">
-                            {item.description}
-                          </p>
-                        )}
+                        <div className="min-w-0">
+                          <Link
+                            href={item.href}
+                            className="text-ink-navy hover:text-primary text-[22px] leading-snug font-bold"
+                          >
+                            {item.title}
+                          </Link>
+                          {item.context && <p className="text-slate-gray mt-2 text-sm">{item.context}</p>}
+                          {item.description && item.description !== item.context && (
+                            <p className="text-slate-gray mt-2 line-clamp-2 text-sm leading-6">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
                       </Card>
                     </li>
                   ))}
@@ -164,31 +200,35 @@ export default async function Page({
         cause instanceof AppError ? cause.message : 'Chưa tải được kết quả. Vui lòng thử lại sau ít phút.';
     }
   }
+  const logos: Record<string, string> = {};
+  if (result?.groups.facilities.length) {
+    const facilities = await getFacilityPublicService().listFacilities();
+    for (const facility of facilities)
+      if (facility.logoUrl) logos[`/co-so/${encodeURIComponent(facility.slug)}`] = facility.logoUrl;
+  }
 
   return (
-    <div className="container-page py-8 md:py-12">
-      <header className="mb-8 max-w-3xl">
-        <p className="text-primary text-body-sm mb-2 font-semibold">TRA CỨU MQ SOLUTIONS</p>
-        <h1 className="text-foreground mb-3 text-[32px] leading-tight font-bold md:text-[50px]">
-          Tìm điều bạn cần
-        </h1>
-        <p className="text-muted-foreground mb-6">
+    <main className="container-page py-12 md:py-16">
+      <header className="mb-10 max-w-4xl">
+        <p className="text-primary text-sm font-semibold tracking-wide uppercase">Tra cứu MQ Solutions</p>
+        <h1 className="text-display-responsive text-ink-navy mt-4 mb-4">Tìm điều bạn cần</h1>
+        <p className="text-slate-gray mb-8 text-lg leading-8">
           Cơ sở y tế, chuyên khoa, bác sĩ và thông tin chăm sóc sức khỏe trong một nơi.
         </p>
-        <SearchBox initialQuery={q.slice(0, 80)} />
+        <SearchBox initialQuery={q.slice(0, 80)} prominent />
       </header>
 
       {q && (
         <nav
           aria-label="Lọc theo loại kết quả"
-          className="border-border mb-8 flex gap-2 overflow-x-auto border-b pb-3"
+          className="border-hairline mb-10 flex gap-2 overflow-x-auto border-b pb-4"
         >
           {TABS.map(({ type, title }) => (
             <Link
               key={type}
               href={pageHref(q, type)}
               aria-current={(parsed?.success ? parsed.data.type : 'all') === type ? 'page' : undefined}
-              className={`text-body-sm shrink-0 rounded-full px-4 py-2 font-semibold ${(parsed?.success ? parsed.data.type : 'all') === type ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'}`}
+              className={`shrink-0 rounded-full px-4 py-3 text-sm font-semibold ${(parsed?.success ? parsed.data.type : 'all') === type ? 'bg-info-bg text-primary' : 'bg-pebble text-ink-navy hover:bg-info-bg'}`}
             >
               {title}
             </Link>
@@ -197,12 +237,18 @@ export default async function Page({
       )}
 
       {!q && (
-        <Card className="max-w-3xl p-6">
-          <CircleHelp className="text-primary mb-3 size-6" aria-hidden="true" />
-          <h2 className="text-lg font-semibold">Bạn đang tìm gì?</h2>
-          <p className="text-muted-foreground mt-2">
-            Nhập ít nhất 2 ký tự để tìm theo tên cơ sở, địa chỉ, chuyên khoa, bác sĩ hoặc tiêu đề bài viết.
-          </p>
+        <Card variant="panel" className="max-w-4xl">
+          <div className="flex items-start gap-4">
+            <IconTile>
+              <UserRound aria-hidden />
+            </IconTile>
+            <div>
+              <h2 className="text-ink-navy text-2xl font-bold">Bạn đang tìm gì?</h2>
+              <p className="text-slate-gray mt-2 leading-7">
+                Nhập ít nhất 2 ký tự để tìm tên cơ sở, địa chỉ, chuyên khoa, bác sĩ hoặc bài viết.
+              </p>
+            </div>
+          </div>
         </Card>
       )}
       {message && (
@@ -213,7 +259,7 @@ export default async function Page({
           </span>
         </Alert>
       )}
-      {result && <Results result={result} />}
-    </div>
+      {result && <Results result={result} logos={logos} />}
+    </main>
   );
 }

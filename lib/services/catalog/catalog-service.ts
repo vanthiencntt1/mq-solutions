@@ -4,6 +4,8 @@ import {
   allowedExamDate,
   availableSlot,
   filterSchedules,
+  fixedSchedules,
+  fixedTimeSlots,
   priceFor,
   type AvailableSlot,
   type Doctor,
@@ -181,6 +183,11 @@ export class CatalogService {
   ): Promise<ExamSchedule[]> {
     const f = await this.facility(code);
     if (f.health === 'DOWN') throw new AppError('HIS_UNAVAILABLE');
+    if (f.scheduleSource === 'FIXED') {
+      // Khung cố định gắn theo phòng; chọn theo bác sĩ cần lịch thật trong DMBSKHAMBENH.
+      if (selection.mode !== 'ROOM' || !selection.room || !f.fixedSchedule) return [];
+      return fixedSchedules(f.fixedSchedule, selection.room, this.d.now(), f.allowSameDay);
+    }
     const identity = selection.mode === 'DOCTOR' ? `doctor:${selection.doctor}` : `room:${selection.room}`;
     const today = new Date(`${this.today()}T00:00:00Z`);
     const end = new Date(today.getTime() + 14 * 86_400_000).toISOString().slice(0, 10);
@@ -284,6 +291,7 @@ export class CatalogService {
   }
 
   private async timeSlots(f: CatalogFacility, room: number, date: string) {
+    if (f.scheduleSource === 'FIXED') return f.fixedSchedule ? fixedTimeSlots(f.fixedSchedule) : [];
     const key = this.d.keys.hisSlots(f.code, String(room), date);
     const rows = await this.read(
       f,

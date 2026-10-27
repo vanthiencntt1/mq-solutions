@@ -38,7 +38,7 @@ export function ForgotForm({ siteKey }: { siteKey?: string }) {
   if (message) {
     return (
       <div className="space-y-4">
-        <h1 className="text-[24px]">Kiểm tra Gmail</h1>
+        <h1 className="text-[40px] leading-tight font-bold">Kiểm tra Gmail</h1>
         <Alert tone="success">{message}</Alert>
         <Button asChild className="w-full">
           <Link href="/dang-nhap">Về trang đăng nhập</Link>
@@ -48,9 +48,9 @@ export function ForgotForm({ siteKey }: { siteKey?: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="space-y-5">
       <div className="space-y-1">
-        <h1 className="text-[24px]">Quên mật khẩu</h1>
+        <h1 className="text-[40px] leading-tight font-bold">Quên mật khẩu</h1>
         <p className="text-body-sm text-slate-gray">
           Nhập đúng thông tin đã đăng ký, hệ thống sẽ gửi mật khẩu mới về Gmail.
         </p>

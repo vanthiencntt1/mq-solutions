@@ -11,11 +11,11 @@ import { Input } from '@/components/ui/input';
 import { UpdateProfileSchema } from '@/lib/domain/account/schemas';
 
 export interface ProfileView {
-  fullName: string;
+  nameMasked: string;
   birthYear: number;
   gender: number;
   cccdMasked: string;
-  phone: string;
+  phoneMasked: string;
   email: string;
   addressLine: string;
   insuranceNoMasked: string;
@@ -36,7 +36,7 @@ export function ProfileForm({ profile }: { profile: ProfileView }) {
   } = useForm({
     resolver: zodResolver(UpdateProfileSchema),
     defaultValues: {
-      phone: profile.phone,
+      phone: '',
       email: profile.email,
       addressLine: profile.addressLine,
       insuranceNo: '',
@@ -51,6 +51,7 @@ export function ProfileForm({ profile }: { profile: ProfileView }) {
       const body = { ...values, insuranceNo: values.insuranceNo || undefined };
       const p = await apiFetch<ProfileView>('/api/me', { method: 'PATCH', body });
       setCurrent(p);
+      setValue('phone', '');
       setValue('insuranceNo', '');
       setValue('currentPassword', '');
       setSaved(true);
@@ -62,7 +63,7 @@ export function ProfileForm({ profile }: { profile: ProfileView }) {
   });
 
   const readonly: [string, string][] = [
-    ['Họ và tên', current.fullName],
+    ['Họ và tên', current.nameMasked],
     ['Số CCCD', current.cccdMasked],
     ['Năm sinh', String(current.birthYear)],
     ['Giới tính', current.gender === 1 ? 'Nam' : 'Nữ'],
@@ -91,8 +92,13 @@ export function ProfileForm({ profile }: { profile: ProfileView }) {
           {saved && <Alert tone="success">Đã lưu thay đổi.</Alert>}
           {serverError && <Alert tone="danger">{serverError}</Alert>}
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="phone" label="Số điện thoại" error={errors.phone?.message}>
-              <Input id="phone" type="tel" maxLength={10} {...register('phone')} />
+            <FormField
+              id="phone"
+              label="Số điện thoại mới"
+              error={errors.phone?.message}
+              hint={`Đang lưu: ${current.phoneMasked}. Chỉ nhập khi cần thay đổi.`}
+            >
+              <Input id="phone" type="tel" maxLength={10} autoComplete="off" {...register('phone')} />
             </FormField>
             <FormField id="email" label="Gmail" error={errors.email?.message}>
               <Input id="email" type="email" {...register('email')} />
