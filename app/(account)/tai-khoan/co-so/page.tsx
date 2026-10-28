@@ -18,34 +18,45 @@ export default async function FacilitiesPage() {
     getIdentityService().listMyFacilities(s.id),
   ]);
   const lastExam = new Map(recent.map((r) => [r.code, r.lastExamDate]));
-  const sorted = [...facilities].sort((a, b) => Number(lastExam.has(b.code)) - Number(lastExam.has(a.code)));
+  const booked = facilities.filter((f) => lastExam.has(f.code));
+  const other = facilities.filter((f) => !lastExam.has(f.code));
 
   return (
     <div className="space-y-8 pb-8">
       <div className="space-y-2">
         <h1 className="text-[38px] leading-tight md:text-[50px]">Hồ sơ tại cơ sở</h1>
         <p className="text-slate-gray max-w-2xl">
-          Hệ thống tự kiểm tra hồ sơ của bạn tại từng cơ sở. Cơ sở đã có hồ sơ có thể xem ngay các lần khám.
-          Kết quả chỉ dùng trong phiên làm việc, hệ thống không lưu liên kết hồ sơ.
+          Chọn cơ sở để kiểm tra hồ sơ của bạn. Cơ sở đã có hồ sơ có thể xem ngay các lần khám. Kết quả chỉ
+          dùng trong phiên làm việc, hệ thống không lưu liên kết hồ sơ.
         </p>
       </div>
-      {sorted.length === 0 ? (
+      {facilities.length === 0 ? (
         <EmptyState icon={Building2} title="Chưa có cơ sở y tế" description="Vui lòng quay lại sau." />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {sorted.map((f) => {
-            const last = lastExam.get(f.code);
-            return (
-              <FacilityIdentifyCard
-                key={f.code}
-                code={f.code}
-                name={f.name}
-                address={f.address}
-                logoUrl={f.logoUrl}
-                hint={last ? `Lần đặt khám gần nhất: ${formatDate(last)}` : undefined}
-              />
-            );
-          })}
+        <div className="space-y-8">
+          {[
+            { title: 'Cơ sở bạn đã đặt khám', rows: booked },
+            { title: 'Cơ sở khác', rows: other },
+          ].map(
+            (group) =>
+              group.rows.length > 0 && (
+                <section key={group.title} className="space-y-2">
+                  <h2 className="text-ink-navy text-xl font-semibold">{group.title}</h2>
+                  {group.rows.map((f) => (
+                    <FacilityIdentifyCard
+                      key={f.code}
+                      code={f.code}
+                      name={f.name}
+                      address={f.address}
+                      logoUrl={f.logoUrl}
+                      hint={
+                        lastExam.get(f.code) ? `Đặt gần nhất ${formatDate(lastExam.get(f.code)!)}` : undefined
+                      }
+                    />
+                  ))}
+                </section>
+              ),
+          )}
         </div>
       )}
     </div>

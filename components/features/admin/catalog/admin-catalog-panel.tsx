@@ -20,8 +20,6 @@ type Room = {
   specialtyHisId: string;
   priceDv: number;
   priceBh: number;
-  priceT7: number;
-  priceCn: number;
 };
 type Schedule = { date: string; roomId: number; doctorId?: string; slotTime?: string };
 type Slot = {
@@ -289,7 +287,7 @@ function CatalogRows({ kind, rows, facility }: { kind: Kind; rows: unknown[]; fa
       );
     case 'rooms':
       return (
-        <Table heads={['Mã phòng', 'Phòng khám', 'Chuyên khoa', 'Dịch vụ', 'BHYT', 'Thứ 7', 'Chủ nhật']}>
+        <Table heads={['Mã phòng', 'Phòng khám', 'Chuyên khoa', 'Dịch vụ', 'BHYT']}>
           {(rows as Room[]).map((row) => (
             <tr key={row.id}>
               <td className={cell}>{row.id}</td>
@@ -297,8 +295,6 @@ function CatalogRows({ kind, rows, facility }: { kind: Kind; rows: unknown[]; fa
               <td className={cell}>{row.specialtyHisId || '—'}</td>
               <td className={cell}>{formatMoney(row.priceDv)}</td>
               <td className={cell}>{formatMoney(row.priceBh)}</td>
-              <td className={cell}>{formatMoney(row.priceT7)}</td>
-              <td className={cell}>{formatMoney(row.priceCn)}</td>
             </tr>
           ))}
         </Table>

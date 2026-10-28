@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AppError } from '@/lib/domain/errors';
 import type { RecordsDeps } from '@/lib/domain/records/ports';
 import type { IdentResult } from '@/lib/domain/identity/types';
-import { parseDateRange } from '@/lib/domain/records/types';
+import { parseDateRange, samePatient } from '@/lib/domain/records/types';
 import { RecordsService, RECORDS_TTL_SECONDS } from '@/lib/services/records/records-service';
 
 const NOW = new Date('2026-10-27T03:00:00Z');
@@ -14,6 +14,8 @@ const ENCOUNTER = {
   ICDName: 'Viêm họng',
   PatientCode: '24000001',
 };
+// Lần khám hơn 12 tháng trước: chỉ có khi HIS trả toàn bộ hồ sơ (btdbn.nam)
+const OLD_ENCOUNTER = { ...ENCOUNTER, EncounterCode: '20230315000124000009', CreateDate: '15/03/2023 09:30' };
 const FOUND: IdentResult = { status: 'FOUND', maBN: '24000001', checkedAt: NOW.toISOString() };
 
 function setup(
@@ -23,6 +25,8 @@ function setup(
     withFile?: boolean;
     wrongPatient?: boolean;
     failMonth?: string;
+    /** ApiDatKham chưa nâng cấp: MMyy rỗng không có dữ liệu, thiếu EncounterCode bị từ chối. */
+    oldHis?: boolean;
   } = {},
 ) {
   const calls: { path: string; body: Record<string, unknown>; timeout?: number }[] = [];
@@ -50,9 +54,12 @@ function setup(
         if (opts.hisError) throw opts.hisError;
         if (path === 'MedicalRecords/GetEncounter') {
           const month = (body as { MMyy: string }).MMyy;
+          if (month === '' && !opts.oldHis) return [ENCOUNTER, OLD_ENCOUNTER] as T;
           if (month === opts.failMonth) throw new AppError('HIS_ERROR');
           return (month === '1026' ? [ENCOUNTER] : []) as T;
         }
+        const allMode = !(body as { EncounterCode?: string }).EncounterCode;
+        if (opts.oldHis && allMode && path.startsWith('MedicalRecords/')) throw new AppError('HIS_ERROR');
         if (path === 'MedicalRecords/GetTestResults')
           return [
             {
@@ -123,22 +130,40 @@ function setup(
 }
 
 describe('RecordsService – C04', () => {
-  it('lấy MaBN từ IdentityService, bỏ trường nhạy cảm, cache mã hóa 30 phút và audit đúng một lần mỗi lượt', async () => {
+  it('lấy toàn bộ lần khám bằng 1 lần gọi MMyy rỗng, bỏ trường nhạy cảm, cache mã hóa 30 phút và audit mỗi lượt', async () => {
     const { service, calls, audit, cache, ttls } = setup();
     const first = await service.encounters('account-1', 'BVA');
     const second = await service.encounters('account-1', 'BVA');
     expect(first).toEqual(second);
     expect(JSON.stringify(first)).not.toContain('24000001');
-    expect(first).toHaveLength(1);
-    // Tra từng tháng trong 12 tháng gần nhất; lượt thứ hai lấy từ cache.
-    expect(calls).toHaveLength(12);
-    expect(calls.map((c) => c.body.MMyy)).toContain('1026');
-    expect(calls.every((c) => c.body.PatientCode === '24000001' && c.timeout === 10_000)).toBe(true);
+    // Có cả lần khám năm 2023 (ngoài 12 tháng), mới nhất trước
+    expect(first.map((e) => e.date)).toEqual(['2026-10-27', '2023-03-15']);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      path: 'MedicalRecords/GetEncounter',
+      body: { PatientCode: '24000001', MMyy: '' },
+      timeout: 10_000,
+    });
     expect([...cache.values()][0]).toMatch(/^ENC:/);
-    expect(ttls).toEqual(Array(12).fill(RECORDS_TTL_SECONDS));
+    expect(ttls).toEqual([RECORDS_TTL_SECONDS]);
     expect(audit).toHaveLength(2);
     expect(audit[0]).toMatchObject({ action: 'VIEW_RECORD', kind: 'encounters' });
     expect(audit[0]?.target).not.toContain('24000001');
+  });
+
+  it('lọc lần khám theo khoảng ngày', async () => {
+    const { service } = setup();
+    expect(await service.encounters('account-1', 'BVA', { from: '2026-01-01' })).toHaveLength(1);
+    await expect(
+      service.encounters('account-1', 'BVA', { from: '2026-10-27', to: '2026-01-01' }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('HIS chưa nâng cấp: MMyy rỗng không có dữ liệu thì quét 12 tháng gần nhất', async () => {
+    const { service, calls } = setup({ oldHis: true });
+    expect(await service.encounters('account-1', 'BVA')).toHaveLength(1);
+    expect(calls).toHaveLength(13);
+    expect(calls.map((c) => c.body.MMyy)).toContain('1026');
   });
 
   it.each([
@@ -151,17 +176,36 @@ describe('RecordsService – C04', () => {
     expect(audit).toHaveLength(0);
   });
 
-  it('chỉ tra kết quả cho EncounterCode thuộc MaBN đã định danh và không lộ PatientCode', async () => {
+  it('xét nghiệm toàn bộ hồ sơ: 1 lần gọi không EncounterCode, không lộ PatientCode', async () => {
     const { service, calls, audit } = setup();
-    const rows = await service.tests('account-1', 'BVA', { from: '2026-10-01', to: '2026-10-27' });
+    const rows = await service.tests('account-1', 'BVA', {});
     expect(rows).toMatchObject([{ name: 'Bạch cầu', abnormal: true }]);
+    expect(rows[0]?.encounterId).toBeTruthy();
     expect(JSON.stringify(rows)).not.toContain('24000001');
-    expect(calls[1]).toMatchObject({
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
       path: 'MedicalRecords/GetTestResults',
-      body: { PatientCode: '24000001', EncounterCode: ENCOUNTER.EncounterCode },
+      body: { PatientCode: '24000001' },
       timeout: 10_000,
     });
+    expect(calls[0]?.body).not.toHaveProperty('EncounterCode');
     expect(audit).toHaveLength(1);
+    // Lọc ngày phía web
+    expect(await service.tests('account-1', 'BVA', { from: '2026-10-28' })).toEqual([]);
+  });
+
+  it('HIS chưa nâng cấp: tra xét nghiệm theo từng lần khám với ngày yyyymmdd', async () => {
+    const { service, calls } = setup({ oldHis: true });
+    expect(await service.tests('account-1', 'BVA', {})).toMatchObject([{ name: 'Bạch cầu' }]);
+    expect(calls.at(-1)).toMatchObject({
+      path: 'MedicalRecords/GetTestResults',
+      body: {
+        PatientCode: '24000001',
+        EncounterCode: ENCOUNTER.EncounterCode,
+        FromDate: '20261027',
+        ToDate: '20261027',
+      },
+    });
   });
 
   it('chi tiết lần khám dùng ID băm, không nhận mã HIS trong URL', async () => {
@@ -184,17 +228,23 @@ describe('RecordsService – C04', () => {
     await expect(service.encounters('account-1', 'BVA')).rejects.toMatchObject({ code: 'HIS_UNAVAILABLE' });
     expect(audit).toHaveLength(0);
     expect(cache.size).toBe(0);
-    expect(calls).toHaveLength(24); // 12 tháng, mỗi tháng thử lại một lần
+    expect(calls).toHaveLength(2); // 1 lần gọi toàn bộ hồ sơ, thử lại một lần
   });
 
   it('một tháng HIS lỗi (thiếu bảng tháng) vẫn hiện các lần khám của tháng khác', async () => {
-    const { service } = setup({ failMonth: '1125' });
+    const { service } = setup({ failMonth: '1125', oldHis: true });
     expect(await service.encounters('account-1', 'BVA')).toMatchObject([{ room: 'Phòng Nội' }]);
   });
 
   it('loại dòng kết quả HIS có PatientCode khác MaBN đã định danh', async () => {
     const { service } = setup({ wrongPatient: true });
     expect(await service.tests('account-1', 'BVA', { from: '2026-10-01', to: '2026-10-27' })).toEqual([]);
+  });
+
+  it('PatientCode dạng số mất số 0 đầu vẫn khớp MaBN', () => {
+    expect(samePatient('4000001', '04000001')).toBe(true);
+    expect(samePatient('4000002', '04000001')).toBe(false);
+    expect(samePatient(undefined, '04000001')).toBe(true);
   });
 
   it('chỉ trả trường tái khám cần thiết, không lộ tên, SĐT hay CCCD từ HIS', async () => {

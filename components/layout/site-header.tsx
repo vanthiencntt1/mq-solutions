@@ -217,11 +217,6 @@ export function SiteHeader({ shell }: { shell?: PublicShell }) {
             </Link>
           </Button>
           <HeaderAuth />
-          <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label="Tài khoản">
-            <Link href="/tai-khoan">
-              <UserRound aria-hidden />
-            </Link>
-          </Button>
           <Button asChild size="md" className="hidden lg:inline-flex">
             <Link href="/dat-kham">Đặt khám</Link>
           </Button>

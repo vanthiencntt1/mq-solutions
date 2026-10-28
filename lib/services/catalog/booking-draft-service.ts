@@ -74,7 +74,7 @@ export class BookingDraftService {
       roomName: room.name,
       doctorName: doctor?.name,
       slotLabel: slot.label,
-      amount: priceFor(room, choice.examDate, choice.objectType),
+      amount: priceFor(room, choice.objectType),
     };
     await this.d.cache.set(this.d.keys.draft(draft.id), draft, this.d.ttl.draft);
     return draft;

@@ -23,6 +23,23 @@ export interface IdentView {
   checkedAt?: string;
 }
 
+/**
+ * Lần khám mới nhất dạng số yyyymmddhhmm từ CreateDate "dd/mm/yyyy hh:mm".
+ * Dòng thiếu ngày: lấy đầu tháng của MMyy đã tra (hoặc 1 nếu tra toàn bộ) để vẫn tính là đã khám.
+ */
+function latestVisit(rows: unknown[], mmyy: string): number {
+  if (rows.length === 0) return 0;
+  const fallback = mmyy ? Number(`20${mmyy.slice(2)}${mmyy.slice(0, 2)}000000`) : 1;
+  return Math.max(
+    ...rows.map((r) => {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(
+        String((r as { CreateDate?: unknown })?.CreateDate ?? ''),
+      );
+      return m ? Number(`${m[3]}${m[2]}${m[1]}${m[4] ?? '00'}${m[5] ?? '00'}`) : fallback;
+    }),
+  );
+}
+
 /** Khóa cache: ident:{accountId}:{facilityCode} (C09 mục 2). */
 const identKey = (accountId: string, facilityCode: string) => `ident:${accountId}:${facilityCode}`;
 
@@ -166,20 +183,30 @@ export class IdentityService {
   }
 
   /**
-   * GetEncounter tra theo tháng (MMyy): quét vài tháng gần nhất. Trả 0 nếu chưa có lần khám,
-   * số càng lớn = lần khám càng gần đây. Lỗi từng tháng coi là chưa có lần khám.
+   * Độ gần của lần khám gần nhất (số yyyymmddhhmm; 0 = chưa từng khám).
+   * Gọi GetEncounter 1 lần với MMyy rỗng: ApiDatKham lấy mọi tháng trong btdbn.nam.
+   * HIS chưa nâng cấp (không trả gì) thì quét vài tháng gần nhất như trước. Lỗi coi là chưa có lần khám.
    */
   private async visitRecency(facility: FacilityRef, maBN: string): Promise<number> {
+    const all = await this.encounterRows(facility, maBN, '');
+    if (all.length > 0) return latestVisit(all, '');
     const months = recentMmyy(this.d.now(), VISIT_LOOKBACK_MONTHS);
     const scores = await Promise.all(
-      months.map((MMyy, i) =>
-        this.d.his
-          .call<unknown[]>(facility.id, 'MedicalRecords/GetEncounter', { MMyy, PatientCode: maBN })
-          .then((rows) => (Array.isArray(rows) && rows.length > 0 ? VISIT_LOOKBACK_MONTHS - i : 0))
-          .catch(() => 0),
-      ),
+      months.map(async (MMyy) => latestVisit(await this.encounterRows(facility, maBN, MMyy), MMyy)),
     );
-    return Math.max(...scores);
+    return Math.max(0, ...scores);
+  }
+
+  private async encounterRows(facility: FacilityRef, maBN: string, MMyy: string) {
+    try {
+      const rows = await this.d.his.call<unknown[]>(facility.id, 'MedicalRecords/GetEncounter', {
+        MMyy,
+        PatientCode: maBN,
+      });
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      return [];
+    }
   }
 
   private async hasVisited(facility: FacilityRef, maBN: string) {

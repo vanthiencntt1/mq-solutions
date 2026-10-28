@@ -32,15 +32,46 @@ export function FacilityIdentifyCard({
   logoUrl?: string | null;
 }) {
   const [view, setView] = useState<View | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [maBN, setMaBN] = useState('');
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(`mq_identify_${code}`);
+      if (!cached) return;
+      const value = JSON.parse(cached) as View & { at: number };
+      if (
+        Date.now() - value.at < 15 * 60_000 &&
+        ['FOUND', 'MISMATCH', 'NEW_PATIENT', 'UNAVAILABLE'].includes(value.status)
+      ) {
+        setView({ status: value.status, maBNMasked: value.maBNMasked, hasVisited: value.hasVisited });
+      } else sessionStorage.removeItem(`mq_identify_${code}`);
+    } catch {
+      /* Storage may be disabled. */
+    }
+  }, [code]);
 
   async function run(url: string, body?: unknown) {
     setBusy(true);
     setError(null);
     try {
-      setView(await apiFetch<View>(url, { body: body ?? {} }));
+      const result = await apiFetch<View>(url, { body: body ?? {} });
+      setView(result);
+      try {
+        sessionStorage.setItem(
+          `mq_identify_${code}`,
+          JSON.stringify({
+            status: result.status,
+            maBNMasked: result.maBNMasked,
+            hasVisited: result.hasVisited,
+            at: Date.now(),
+          }),
+        );
+      } catch {
+        /* Storage may be disabled. */
+      }
     } catch (e) {
       setError((e as ApiError).message);
     } finally {
@@ -49,49 +80,60 @@ export function FacilityIdentifyCard({
   }
   const identify = (refresh = false) => run(`/api/facilities/${code}/identify`, { refresh });
 
-  // Tự kiểm tra hồ sơ khi mở trang; kết quả định danh đã được cache phía server nên không dồn tải lên HIS.
-  useEffect(() => {
-    void identify();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
-
   return (
-    <Card className="space-y-5 transition-shadow hover:shadow-md">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <Card
+      className={`relative space-y-3 overflow-hidden rounded-2xl p-4 md:px-5 ${view ? `border-l-4 ${view.status === 'FOUND' ? 'border-l-success' : view.status === 'NEW_PATIENT' ? 'border-l-info' : 'border-l-warning'}` : ''}`}
+    >
+      <div className="flex min-h-19 flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <FacilityLogo name={name} logoUrl={logoUrl} />
-          <div className="min-w-0 space-y-2">
-            <CardTitle className="text-xl">{name}</CardTitle>
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-lg">{name}</CardTitle>
             {address && <CardDescription>{address}</CardDescription>}
             {hint && <CardDescription>{hint}</CardDescription>}
           </div>
         </div>
-      </div>
-      <div className="border-hairline flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        {!view && busy ? (
-          <Badge tone="neutral">
-            <RefreshCw className="size-3.5 animate-spin" aria-hidden /> Đang kiểm tra hồ sơ…
-          </Badge>
-        ) : null}
-        {!view && !busy ? <Badge tone="warning">Chưa kiểm tra được hồ sơ</Badge> : null}
-        {view?.status === 'FOUND' ? (
-          <Badge tone="success">
-            <BadgeCheck className="size-3.5" aria-hidden /> Đã có hồ sơ · Mã BN {view.maBNMasked}
-          </Badge>
-        ) : null}
-        {view?.status === 'MISMATCH' ? <Badge tone="warning">Thông tin chưa khớp</Badge> : null}
-        {view?.status === 'NEW_PATIENT' ? <Badge tone="info">Chưa có hồ sơ</Badge> : null}
-        {view?.status === 'UNAVAILABLE' ? <Badge tone="warning">Chưa kết nối</Badge> : null}
-        {view?.status === 'FOUND' && (
-          <Button asChild>
-            <Link href={`/tai-khoan/co-so/${code}`}>Xem hồ sơ khám bệnh</Link>
-          </Button>
-        )}
-        {!view && !busy && (
-          <Button variant="outline" onClick={() => identify()}>
-            Thử lại
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+          {view?.status === 'FOUND' ? (
+            <Badge tone="success">
+              <BadgeCheck className="size-3.5" aria-hidden /> Đã có hồ sơ · Mã BN {view.maBNMasked}
+            </Badge>
+          ) : null}
+          {view?.status === 'MISMATCH' ? <Badge tone="warning">Thông tin chưa khớp</Badge> : null}
+          {view?.status === 'NEW_PATIENT' ? <Badge tone="info">Chưa có hồ sơ</Badge> : null}
+          {view?.status === 'UNAVAILABLE' ? <Badge tone="warning">Chưa kết nối</Badge> : null}
+          {view?.status === 'FOUND' && (
+            <Button asChild size="sm">
+              <Link href={`/tai-khoan/co-so/${code}`}>Xem hồ sơ</Link>
+            </Button>
+          )}
+          {!view && !busy && (
+            <Button variant="outline" size="sm" onClick={() => void identify()}>
+              Kiểm tra hồ sơ
+            </Button>
+          )}
+          {busy && (
+            <Button variant="outline" size="sm" disabled className="min-w-40">
+              <RefreshCw className="animate-spin" aria-hidden /> Đang kiểm tra…
+            </Button>
+          )}
+          {view && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Tải lại hồ sơ ${name}`}
+              disabled={busy}
+              onClick={() => void identify(true)}
+            >
+              <RefreshCw aria-hidden />
+            </Button>
+          )}
+          {(view?.status === 'NEW_PATIENT' || view?.status === 'MISMATCH') && (
+            <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? 'Thu gọn' : 'Nhập mã BN'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && <Alert tone="danger">{error}</Alert>}
@@ -105,41 +147,45 @@ export function FacilityIdentifyCard({
         </div>
       )}
 
-      {view?.status === 'NEW_PATIENT' && (
-        <div className="space-y-3">
-          <Badge tone="info">
-            <UserPlus className="size-3.5" aria-hidden /> Bệnh nhân mới
-          </Badge>
-          <p className="text-body-sm text-slate-gray">
-            Bạn chưa có hồ sơ tại cơ sở này. Vẫn đặt khám dịch vụ được, hồ sơ sẽ được tạo khi xác nhận đặt
-            khám.
-          </p>
-          <Button asChild>
-            <Link href={`/dat-kham?co-so=${code}`}>Đặt khám</Link>
-          </Button>
-          <ManualMaBN value={maBN} onChange={setMaBN} busy={busy} onSubmit={byMaBN} />
-        </div>
-      )}
+      {(view?.status === 'NEW_PATIENT' || view?.status === 'MISMATCH') && (
+        <div
+          className={`grid transition-[grid-template-rows] duration-[180ms] motion-reduce:transition-none ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+          aria-hidden={!expanded}
+          inert={!expanded}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {view.status === 'NEW_PATIENT' && (
+              <div className="space-y-3 pt-2">
+                <Badge tone="info">
+                  <UserPlus className="size-3.5" aria-hidden /> Bệnh nhân mới
+                </Badge>
+                <p className="text-body-sm text-slate-gray">
+                  Bạn chưa có hồ sơ tại cơ sở này. Vẫn đặt khám dịch vụ được, hồ sơ sẽ được tạo khi xác nhận
+                  đặt khám.
+                </p>
+                <Button asChild>
+                  <Link href={`/dat-kham?co-so=${code}`}>Đặt khám</Link>
+                </Button>
+                <ManualMaBN id={code} value={maBN} onChange={setMaBN} busy={busy} onSubmit={byMaBN} />
+              </div>
+            )}
 
-      {view?.status === 'MISMATCH' && (
-        <div className="space-y-3">
-          <Alert tone="warning">
-            <CircleAlert className="mr-1 inline size-4 align-text-bottom" aria-hidden />
-            Thông tin chưa khớp hồ sơ tại cơ sở. Vui lòng mang CCCD đến quầy tiếp đón để cập nhật, hoặc nhập
-            mã bệnh nhân bên dưới nếu bạn có.
-          </Alert>
-          <ManualMaBN value={maBN} onChange={setMaBN} busy={busy} onSubmit={byMaBN} />
+            {view.status === 'MISMATCH' && (
+              <div className="space-y-3 pt-2">
+                <Alert tone="warning">
+                  <CircleAlert className="mr-1 inline size-4 align-text-bottom" aria-hidden />
+                  Thông tin chưa khớp hồ sơ tại cơ sở. Vui lòng mang CCCD đến quầy tiếp đón để cập nhật, hoặc
+                  nhập mã bệnh nhân bên dưới nếu bạn có.
+                </Alert>
+                <ManualMaBN id={code} value={maBN} onChange={setMaBN} busy={busy} onSubmit={byMaBN} />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {view?.status === 'UNAVAILABLE' && (
         <Alert tone="warning">Chưa kết nối được cơ sở, vui lòng thử lại sau ít phút.</Alert>
-      )}
-
-      {view && (
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => identify(true)}>
-          <RefreshCw aria-hidden /> Tải lại
-        </Button>
       )}
     </Card>
   );
@@ -150,11 +196,13 @@ export function FacilityIdentifyCard({
 }
 
 function ManualMaBN({
+  id,
   value,
   onChange,
   busy,
   onSubmit,
 }: {
+  id: string;
   value: string;
   onChange: (v: string) => void;
   busy: boolean;
@@ -168,12 +216,12 @@ function ManualMaBN({
         onSubmit();
       }}
     >
-      <label htmlFor="maBN" className="text-body-sm font-medium">
+      <label htmlFor={`maBN-${id}`} className="text-body-sm font-medium">
         Đã từng khám tại đây? Nhập mã bệnh nhân in trên phiếu khám / hóa đơn
       </label>
       <div className="flex flex-wrap gap-2 sm:flex-nowrap">
         <Input
-          id="maBN"
+          id={`maBN-${id}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           inputMode="numeric"

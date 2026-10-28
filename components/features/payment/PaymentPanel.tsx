@@ -10,6 +10,7 @@ import {
   Clock3,
   Copy,
   Download,
+  ExternalLink,
   Landmark,
   LoaderCircle,
   ReceiptText,
@@ -23,6 +24,7 @@ import { Alert } from '@/components/ui/form-field';
 import { ProductFrame } from '@/components/ui/product-frame';
 import { BookingStepper } from '@/components/features/booking/booking-stepper';
 import { BookingSummary } from '@/components/features/booking/booking-summary';
+import { PAY_APPS, isPayApp, type PayAppId } from '@/components/features/payment/payment-methods';
 import type { PaymentView } from '@/lib/domain/payment/types';
 import { formatDateTime, formatMoney } from '@/lib/utils/format';
 
@@ -59,9 +61,19 @@ function statusMessage(data: PaymentView, expired: boolean) {
   return { tone: 'warning' as const, text: 'Đang chờ ngân hàng xác nhận chuyển khoản.' };
 }
 
-export function PaymentPanel({ initial, initialNow }: { initial: PaymentView; initialNow: number }) {
+export function PaymentPanel({
+  initial,
+  initialNow,
+  initialApp,
+}: {
+  initial: PaymentView;
+  initialNow: number;
+  initialApp?: string;
+}) {
   const router = useRouter();
   const [data, setData] = useState(initial);
+  const [app, setApp] = useState<PayAppId>(isPayApp(initialApp) ? initialApp : 'bank');
+  const appInfo = PAY_APPS.find((item) => item.id === app) ?? PAY_APPS[0];
   const [now, setNow] = useState(initialNow);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
@@ -238,6 +250,34 @@ export function PaymentPanel({ initial, initialNow }: { initial: PaymentView; in
                     </dd>
                   </div>
                 </dl>
+                <div className="border-hairline space-y-3 rounded-xl border p-4" aria-label="Cách thanh toán">
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Ứng dụng thanh toán">
+                    {PAY_APPS.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={app === item.id}
+                        onClick={() => setApp(item.id)}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                          app === item.id
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-hairline text-slate-gray hover:bg-pebble'
+                        }`}
+                      >
+                        {item.id === 'bank' ? 'Ngân hàng' : item.title.replace('Ví ', '')}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-ink-navy text-sm">{appInfo.steps}</p>
+                  {qr.checkoutUrl && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={qr.checkoutUrl} target="_blank" rel="noreferrer">
+                        <ExternalLink className="size-4" aria-hidden /> Mở trang thanh toán PayOS
+                      </a>
+                    </Button>
+                  )}
+                </div>
                 <p className="text-slate-gray text-sm">
                   Tiền được chuyển trực tiếp tới tài khoản của {data.facilityName}. Hệ thống tự kiểm tra giao
                   dịch sau mỗi 3 giây.

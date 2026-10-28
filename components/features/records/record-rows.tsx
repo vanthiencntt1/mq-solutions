@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Encounter, Imaging, Prescription, Reexam, Test } from '@/lib/domain/records/types';
 import { formatDate } from '@/lib/utils/format';
@@ -9,21 +9,22 @@ import { formatDate } from '@/lib/utils/format';
 export type RecordTab = 'encounters' | 'tests' | 'imaging' | 'prescriptions' | 'reexams';
 type Rows = Encounter[] | Test[] | Imaging[] | Prescription[] | Reexam[];
 
-export function DetailSection({
-  title,
-  empty,
-  children,
-}: {
-  title: string;
-  empty: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-border border-t pt-4">
-      <h3 className="text-2xl font-bold">{title}</h3>
-      {empty ? <p className="text-body-sm text-slate-gray">Chưa có kết quả.</p> : children}
-    </section>
-  );
+function month(date: string) {
+  return date?.slice(0, 7) || 'Không rõ ngày';
+}
+function monthLabel(value: string) {
+  return /^\d{4}-\d{2}$/.test(value) ? `Tháng ${value.slice(5)}/${value.slice(0, 4)}` : value;
+}
+function valueDate(date: string) {
+  return date ? formatDate(date) : '—';
+}
+export function abnormalArrow(result: string, reference: string): string {
+  const value = Number(result.replace(',', '.'));
+  const numbers = reference.match(/-?\d+(?:[.,]\d+)?/g)?.map((v) => Number(v.replace(',', '.'))) ?? [];
+  if (Number.isNaN(value) || numbers.length < 2) return '!';
+  if (value < numbers[0]!) return '↓';
+  if (value > numbers[1]!) return '↑';
+  return '!';
 }
 
 export function RecordRows({
@@ -31,111 +32,125 @@ export function RecordRows({
   rows,
   code,
   onDetail,
+  selectedId,
+  search = '',
 }: {
   tab: RecordTab;
   rows: Rows;
   code: string;
   onDetail: (id: string) => void;
+  selectedId?: string;
+  search?: string;
 }) {
+  const query = search.trim().toLocaleLowerCase('vi');
+  const filtered = rows.filter(
+    (row) =>
+      !query ||
+      Object.values(row).some(
+        (value) => typeof value === 'string' && value.toLocaleLowerCase('vi').includes(query),
+      ),
+  );
+  const groups = new Map<string, typeof filtered>();
+  for (const row of filtered) {
+    const key = month(row.date);
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  if (!filtered.length)
+    return <p className="text-slate-gray px-4 py-8 text-sm">Không tìm thấy mục phù hợp.</p>;
   return (
-    <div className="grid gap-3">
-      {tab === 'encounters' &&
-        (rows as Encounter[]).map((r) => (
-          <article key={r.id} className="border-hairline bg-paper space-y-2 rounded-xl border p-4">
-            <p className="font-semibold">
-              {formatDate(r.date)} · {r.room || 'Lần khám'}
-            </p>
-            <p className="text-body-sm text-slate-gray">
-              {r.doctor && `Bác sĩ: ${r.doctor} · `}
-              {r.diagnosis || 'Chưa có chẩn đoán'}
-            </p>
-            <button
-              className="text-body-sm text-deep-cobalt inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
-              onClick={() => onDetail(r.id)}
-            >
-              Xem chi tiết
-            </button>
-          </article>
-        ))}
-      {tab === 'tests' &&
-        (rows as Test[]).map((r, i) => (
-          <article
-            key={`${r.encounterId}-${i}`}
-            className="border-hairline bg-paper space-y-2 rounded-xl border p-4"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-semibold">{r.name}</p>
-              {r.abnormal && <Badge tone="warning">! Bất thường</Badge>}
-            </div>
-            <p className="text-body-sm">
-              {r.result} {r.unit}
-              {r.reference && ` · Tham chiếu: ${r.reference}`}
-            </p>
-            <p className="text-caption text-slate-gray">{r.date && formatDate(r.date)}</p>
-            <FileLink url={r.fileUrl} />
-          </article>
-        ))}
-      {tab === 'imaging' &&
-        (rows as Imaging[]).map((r, i) => (
-          <article
-            key={`${r.encounterId}-${i}`}
-            className="border-hairline bg-paper space-y-2 rounded-xl border p-4"
-          >
-            <p className="font-semibold">
-              {r.name || 'Chẩn đoán hình ảnh'} · {r.date && formatDate(r.date)}
-            </p>
-            <p className="text-body-sm">{r.description}</p>
-            <p className="text-body-sm font-medium">Kết luận: {r.conclusion || 'Chưa có'}</p>
-            <FileLink url={r.fileUrl} />
-          </article>
-        ))}
-      {tab === 'prescriptions' &&
-        (rows as Prescription[]).map((r, i) => (
-          <article
-            key={`${r.encounterId}-${i}`}
-            className="border-hairline bg-paper space-y-2 rounded-xl border p-4"
-          >
-            <p className="font-semibold">{r.name}</p>
-            <p className="text-body-sm">
-              {r.form && `${r.form} · `}Số lượng: {r.quantity || '—'}
-            </p>
-            <p className="text-body-sm text-slate-gray">
-              Cách dùng: {r.dosage || 'Theo hướng dẫn của bác sĩ'}
-            </p>
-          </article>
-        ))}
-      {tab === 'reexams' &&
-        (rows as Reexam[]).map((r, i) => (
-          <article
-            key={`${r.date}-${i}`}
-            className="border-hairline bg-paper flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
-          >
-            <div>
-              <p className="font-semibold">Hẹn tái khám: {formatDate(r.date)}</p>
-              <p className="text-body-sm text-slate-gray">Khoa: {r.specialtyCode || 'Theo phiếu hẹn'}</p>
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={`/dat-kham?co-so=${encodeURIComponent(code)}&chuyen-khoa=${encodeURIComponent(r.specialtyCode)}`}
+    <div className="min-w-0">
+      {[...groups].map(([key, items]) => (
+        <section key={key}>
+          <h3 className="bg-pebble text-slate-gray border-hairline sticky top-0 z-10 border-y px-4 py-2 text-sm font-semibold">
+            {monthLabel(key)}
+          </h3>
+          {items.map((row, index) => {
+            if (tab === 'reexams') {
+              const r = row as Reexam;
+              return (
+                <div
+                  key={`${r.date}-${index}`}
+                  className="border-hairline odd:bg-pebble/40 flex min-h-16 items-center justify-between gap-2 border-b px-4 py-2"
+                >
+                  <span className="min-w-0 text-sm">
+                    <b>{valueDate(r.date)}</b>
+                    <span className="text-slate-gray block truncate">
+                      Khoa: {r.specialtyCode || 'Theo phiếu hẹn'}
+                    </span>
+                  </span>
+                  <Button asChild variant="outline" size="sm">
+                    <Link
+                      href={`/dat-kham?co-so=${encodeURIComponent(code)}&chuyen-khoa=${encodeURIComponent(r.specialtyCode)}`}
+                    >
+                      Đặt khám tái khám
+                    </Link>
+                  </Button>
+                </div>
+              );
+            }
+            const id = (row as Encounter).id ?? (row as Test).encounterId;
+            const canOpen = Boolean(id);
+            let title = '',
+              secondary = '',
+              trailing = '';
+            if (tab === 'encounters') {
+              const r = row as Encounter;
+              title = r.room || 'Lần khám';
+              secondary = [r.doctor, r.diagnosis].filter(Boolean).join(' · ');
+            }
+            if (tab === 'tests') {
+              const r = row as Test;
+              title = r.name;
+              secondary = `${r.result} ${r.unit}${r.reference ? ` · Tham chiếu ${r.reference}` : ''}`;
+              trailing = r.abnormal ? abnormalArrow(r.result, r.reference) : '';
+            }
+            if (tab === 'imaging') {
+              const r = row as Imaging;
+              title = r.name || 'Chẩn đoán hình ảnh';
+              secondary = r.conclusion || r.description;
+            }
+            if (tab === 'prescriptions') {
+              const r = row as Prescription;
+              title = r.name;
+              secondary = `${r.quantity} ${r.form} · ${r.dosage}`;
+            }
+            return (
+              <button
+                key={`${id}-${index}`}
+                type="button"
+                disabled={!canOpen}
+                onClick={() => onDetail(id)}
+                aria-current={id === selectedId ? 'true' : undefined}
+                className={`border-hairline hover:bg-info-bg focus-visible:ring-signal-blue odd:bg-pebble/40 flex min-h-16 w-full items-center gap-3 border-b px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-offset-2 ${id === selectedId ? 'bg-info-bg border-l-signal-blue border-l-[3px]' : ''}`}
               >
-                Đặt khám tái khám
-              </Link>
-            </Button>
-          </article>
-        ))}
+                <span className="w-14 shrink-0 text-center tabular-nums">
+                  <b className="block text-base">
+                    {row.date?.slice(8, 10)}/{row.date?.slice(5, 7)}
+                  </b>
+                  <small className="text-slate-gray">{row.date?.slice(0, 4)}</small>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="text-ink-navy block truncate font-semibold" title={title}>
+                    {title}
+                  </span>
+                  <span
+                    className={`block truncate text-sm ${tab === 'tests' && (row as Test).abnormal ? 'text-danger font-semibold' : 'text-slate-gray'}`}
+                    title={secondary}
+                  >
+                    {secondary}
+                  </span>
+                </span>
+                {trailing && (
+                  <span className="text-danger font-bold" aria-label="Bất thường">
+                    {trailing}
+                  </span>
+                )}
+                {canOpen && <ChevronRight className="text-slate-gray size-4 shrink-0" aria-hidden />}
+              </button>
+            );
+          })}
+        </section>
+      ))}
     </div>
   );
-}
-
-function FileLink({ url }: { url?: string }) {
-  return url ? (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-body-sm text-deep-cobalt inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
-    >
-      Xem tệp kết quả (hết hạn sau 5 phút)
-    </a>
-  ) : null;
 }

@@ -102,20 +102,11 @@ export class CatalogService {
   async rooms(code: string, specialty?: string): Promise<Room[]> {
     const f = await this.facility(code);
     const key = this.d.keys.hisRooms(code, specialty ?? 'all');
-    const [all, weekends, filtered] = await Promise.all([
+    const [all, filtered] = await Promise.all([
       this.read(
         f,
         this.d.keys.hisRooms(code, 'all'),
         'Rooms/GetRooms',
-        {},
-        parseRooms,
-        this.d.ttl.catalog,
-        true,
-      ),
-      this.read(
-        f,
-        this.d.keys.hisCatalog(code, 'rooms-weekend'),
-        'Rooms/GetRoomsT7CN',
         {},
         parseRooms,
         this.d.ttl.catalog,
@@ -135,16 +126,9 @@ export class CatalogService {
     ]);
     const selected = filtered ?? all;
     const byId = new Map(all.map((r) => [r.id, r]));
-    const weekendById = new Map(weekends.map((r) => [r.id, r]));
     return selected.map((r) => {
       const full = byId.get(r.id) ?? r;
-      const weekend = weekendById.get(r.id);
-      return {
-        ...full,
-        specialtyHisId: r.specialtyHisId || full.specialtyHisId || specialty || '',
-        priceT7: weekend?.priceT7 || full.priceT7,
-        priceCn: weekend?.priceCn || full.priceCn,
-      };
+      return { ...full, specialtyHisId: r.specialtyHisId || full.specialtyHisId || specialty || '' };
     });
   }
 
@@ -250,7 +234,7 @@ export class CatalogService {
     if (!room || !date) return { list };
     const selected = (await this.rooms(code)).find((r) => r.id === room);
     if (!selected) throw new AppError('NOT_FOUND');
-    return { list, amount: priceFor(selected, date, objectType) };
+    return { list, amount: priceFor(selected, objectType) };
   }
 
   async locations(code: string, kind: LocationKind, parent?: string): Promise<Location[]> {

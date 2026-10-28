@@ -181,13 +181,8 @@ export class AdminCatalogService {
         return this.call(id, 'Subjects/GetSubjects', {});
       case 'doctors':
         return this.call(id, 'Doctors/GetDoctors', {});
-      case 'rooms': {
-        const [base, weekend] = await Promise.all([
-          this.call(id, 'Rooms/GetRooms', {}),
-          this.call(id, 'Rooms/GetRoomsT7CN', {}),
-        ]);
-        return { base, weekend };
-      }
+      case 'rooms':
+        return this.call(id, 'Rooms/GetRooms', {});
       case 'schedules': {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(this.d.now());
         const end = new Date(Date.parse(`${today}T00:00:00Z`) + 13 * 86_400_000).toISOString().slice(0, 10);
@@ -221,13 +216,9 @@ export class AdminCatalogService {
         case 'doctors':
           return parseDoctors(payload);
         case 'rooms': {
-          const raw = z.object({ base: z.unknown(), weekend: z.unknown() }).parse(payload);
-          const weekend = new Map(parseRooms(raw.weekend).map((room) => [room.id, room]));
-          return parseRooms(raw.base).map((room) => ({
-            ...room,
-            priceT7: weekend.get(room.id)?.priceT7 ?? room.priceT7,
-            priceCn: weekend.get(room.id)?.priceCn ?? room.priceCn,
-          }));
+          // Bản cache cũ dạng { base, weekend } (khi còn gọi GetRoomsT7CN): chỉ lấy base.
+          const old = z.object({ base: z.unknown() }).safeParse(payload);
+          return parseRooms(old.success ? old.data.base : payload);
         }
         case 'schedules': {
           const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(

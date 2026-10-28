@@ -53,15 +53,26 @@ const ROUTES: Record<string, Handler> = {
   'MedicalRecords/GetEncounter': (b) => {
     const e = ENCOUNTERS[String(b.PatientCode)];
     const nowMmyy = `${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getFullYear()).slice(-2)}`;
-    return e && String(b.MMyy).split(',').includes(nowMmyy) ? [e] : [];
+    // MMyy rỗng = toàn bộ hồ sơ (ApiDatKham đọc btdbn.nam)
+    return e && (!b.MMyy || String(b.MMyy).split(',').includes(nowMmyy)) ? [e] : [];
   },
+  // EncounterCode bỏ trống = toàn bộ hồ sơ của bệnh nhân
   'MedicalRecords/GetTestResults': (b) =>
-    TEST_RESULTS.filter((r) => r.PatientCode === b.PatientCode && r.EncounterCode === b.EncounterCode),
+    TEST_RESULTS.filter(
+      (r) => r.PatientCode === b.PatientCode && (!b.EncounterCode || r.EncounterCode === b.EncounterCode),
+    ),
   'MedicalRecords/GetImageDiagnosticResults': (b) =>
-    IMAGING_RESULTS.filter((r) => r.PatientCode === b.PatientCode && r.EncounterCode === b.EncounterCode),
+    IMAGING_RESULTS.filter(
+      (r) => r.PatientCode === b.PatientCode && (!b.EncounterCode || r.EncounterCode === b.EncounterCode),
+    ),
   'MedicalRecords/GetPrescription': (b) =>
-    b.PatientCode === '24000001' && b.EncounterCode === ENCOUNTERS['24000001']?.EncounterCode
-      ? PRESCRIPTIONS
+    b.PatientCode === '24000001' &&
+    (!b.EncounterCode || b.EncounterCode === ENCOUNTERS['24000001']?.EncounterCode)
+      ? PRESCRIPTIONS.map((p) => ({
+          ...p,
+          PatientCode: '24000001',
+          EncounterCode: ENCOUNTERS['24000001']?.EncounterCode,
+        }))
       : [],
   'Reexamination/GetReexaminationPatientInfo': (b) =>
     REEXAMS.filter((r) => String(r.PatientCode) === b.PatientCode),

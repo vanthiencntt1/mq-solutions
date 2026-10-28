@@ -9,6 +9,8 @@ export interface PaymentView {
   appointmentStatus: string;
   expiresAt: string;
   qr: Omit<PaymentQr, 'expiresAt'> | null;
+  /** Cổng nhận tiền của cơ sở: SEPAY | PAYOS. */
+  provider: string;
 }
 
 export const appointmentCodeSchema = z.string().regex(/^MQ[A-F0-9]{10}$/);
@@ -44,3 +46,33 @@ export function classifyTransfer(expected: number, received: number, slotAvailab
   if (!slotAvailable) return 'refund' as const;
   return 'paid' as const;
 }
+
+// ===== PayOS =====
+// PayOS bắt buộc orderCode là số nguyên. Mã phiếu MQ + 10 số hex = 40 bit, đổi qua lại không cần bảng phụ.
+export function payosOrderCodeOf(code: string): number {
+  const parsed = appointmentCodeSchema.parse(code);
+  return Number.parseInt(parsed.slice(2), 16);
+}
+
+export function codeOfPayosOrder(orderCode: number): string | null {
+  if (!Number.isSafeInteger(orderCode) || orderCode < 0 || orderCode > 0xff_ffff_ffff) return null;
+  return `MQ${orderCode.toString(16).toUpperCase().padStart(10, '0')}`;
+}
+
+export const payosWebhookSchema = z.object({
+  code: z.string(),
+  desc: z.string().optional(),
+  success: z.boolean().optional(),
+  data: z
+    .object({
+      orderCode: z.number().int().nonnegative().safe(),
+      amount: z.number().int().nonnegative().safe(),
+      reference: z.string().max(100).nullable().optional(),
+      paymentLinkId: z.string().max(100).nullable().optional(),
+      code: z.string().optional(),
+    })
+    .loose(),
+  signature: z.string().regex(/^[a-f0-9]{64}$/i),
+});
+
+export type PayosWebhook = z.infer<typeof payosWebhookSchema>;

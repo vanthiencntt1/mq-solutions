@@ -15,29 +15,45 @@ export const EncounterHis = z.object({
   RoomName: field,
   DoctorName: field,
   ICDName: field,
+  ICDCode: field,
+  Medical_number: field,
+  isbhyt: z.union([z.number(), z.string()]).nullish(),
 });
+// EncounterCode có thể trống ở dữ liệu chuyển từ hệ thống cũ (TTKQXN/TTKQCLS/TTDONTHUOC).
+const optionalCode = z
+  .union([z.string(), z.number()])
+  .nullish()
+  .transform((v) => (v === null || v === undefined ? undefined : String(v)));
+
 export const TestHis = z.object({
-  PatientCode: code.optional(),
-  EncounterCode: code,
+  PatientCode: optionalCode,
+  EncounterCode: optionalCode,
   ReturnDate: dateField,
+  GettingSampleDate: field,
+  TypeName: field,
   SymptonName: field,
   ResultName: field,
   Result: field,
   Unit: field,
   UsualIndex: field,
   Note: field,
+  // ApiDatKham: xn_ketqua.batthuong (0 = bình thường)
+  batthuong: field,
   Base64String: field,
 });
 export const ImagingHis = z.object({
-  PatientCode: code.optional(),
-  EncounterCode: code,
+  PatientCode: optionalCode,
+  EncounterCode: optionalCode,
   CreateDate: dateField,
+  TypeName: field,
   Name: field,
   Description: field,
   Conclusion: field,
   Base64String: field,
 });
 export const PrescriptionHis = z.object({
+  PatientCode: optionalCode,
+  EncounterCode: optionalCode,
   Name: field,
   Quantity: field,
   Type: field,
@@ -45,7 +61,7 @@ export const PrescriptionHis = z.object({
   CreateDate: field,
 });
 export const ReexamHis = z.object({
-  PatientCode: code.optional(),
+  PatientCode: optionalCode,
   ReexaminationDate: dateField,
   SubjectID: field,
   RoomID: field,
@@ -66,7 +82,16 @@ export interface DateRange {
 }
 
 /** Dạng hồ sơ tối thiểu được phép trả cho trình duyệt (C04 mục 3, 5). */
-export type Encounter = { id: string; date: string; room: string; doctor: string; diagnosis: string };
+export type Encounter = {
+  id: string;
+  date: string;
+  room: string;
+  doctor: string;
+  diagnosis: string;
+  icdCode?: string;
+  recordNoMasked?: string;
+  insuranceType?: boolean;
+};
 export type Test = {
   encounterId: string;
   date: string;
@@ -75,6 +100,9 @@ export type Test = {
   unit: string;
   reference: string;
   abnormal: boolean;
+  group?: string;
+  sampleDate?: string;
+  device?: string;
   fileUrl?: string;
 };
 export type Imaging = {
@@ -83,6 +111,8 @@ export type Imaging = {
   name: string;
   description: string;
   conclusion: string;
+  typeName?: string;
+  machine?: string;
   fileUrl?: string;
 };
 export type Prescription = {
@@ -92,6 +122,11 @@ export type Prescription = {
   quantity: string;
   form: string;
   dosage: string;
+  activeIngredient?: string;
+  morning?: string;
+  noon?: string;
+  afternoon?: string;
+  evening?: string;
 };
 export type Reexam = { date: string; specialtyCode: string; roomCode: string };
 export type EncounterDetail = Encounter & {
@@ -101,6 +136,25 @@ export type EncounterDetail = Encounter & {
 };
 
 export const toHisDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+/** yyyymmdd – định dạng ngày GetTestResults/GetImageDiagnosticResults của ApiDatKham. */
+export const toHisDay = (iso: string) => iso.slice(0, 10).replaceAll('-', '');
+
+/** HIS trả PatientCode dạng số ở một số API (mất số 0 đầu): so sánh sau khi bù 0. */
+export function samePatient(value: string | undefined, maBN: string): boolean {
+  return !value || value === maBN || value.padStart(maBN.length, '0') === maBN;
+}
+
+/** Bộ lọc ngày tùy chọn của hồ sơ: không có from/to = toàn bộ hồ sơ. */
+export type RangeFilter = { from?: string; to?: string };
+export function parseRangeFilter(input: { from?: string; to?: string }): RangeFilter {
+  const from = input.from ? IsoDate.parse(input.from) : undefined;
+  const to = input.to ? IsoDate.parse(input.to) : undefined;
+  if (from && to && from > to) throw new AppError('VALIDATION_FAILED', 'Từ ngày phải trước đến ngày');
+  return { from, to };
+}
+export function inRange(date: string, f: RangeFilter): boolean {
+  return (!f.from || date >= f.from) && (!f.to || date <= f.to);
+}
 export function fromHisDate(value: string): string {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(value);
   return m ? `${m[3]}-${m[2]}-${m[1]}` : value.slice(0, 10);

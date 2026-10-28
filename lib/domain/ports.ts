@@ -13,6 +13,8 @@ export interface CreatePaymentInput {
   facilityId: string;
   orderCode: string;
   amount: number;
+  /** Hạn thanh toán – cổng có link (PayOS) tự khóa link khi hết hạn. */
+  expiresAt?: Date;
 }
 
 export interface PaymentQr {
@@ -22,6 +24,8 @@ export interface PaymentQr {
   amount: number;
   content: string;
   qrImageUrl: string;
+  /** Trang thanh toán của cổng (PayOS) – có sẵn các lựa chọn app/ví. */
+  checkoutUrl?: string;
   expiresAt: Date;
 }
 

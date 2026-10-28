@@ -56,7 +56,7 @@ const fields = {
     .regex(/^[A-Z0-9_]{2,40}$/),
   secretRef: envRef,
   timeoutMs: z.number().int().min(1000).max(10000),
-  payProvider: z.literal('SEPAY'),
+  payProvider: z.enum(['SEPAY', 'PAYOS']),
   bankCode: optionalText(20),
   bankAccountNo: z
     .string()

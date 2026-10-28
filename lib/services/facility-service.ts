@@ -16,12 +16,14 @@ export interface FacilityCard {
 /** Trang hồ sơ truy cập trực tiếp bằng mã cơ sở, kể cả khi có hơn 24 cơ sở hoạt động (W08). */
 export async function getActiveFacilityByCode(
   code: string,
-): Promise<Pick<FacilityCard, 'code' | 'name'> | null> {
+): Promise<Pick<FacilityCard, 'code' | 'name' | 'address' | 'logoUrl'> | null> {
   const row = await prisma.facility.findUnique({
     where: { code },
-    select: { code: true, name: true, status: true },
+    select: { code: true, name: true, address: true, logoUrl: true, status: true },
   });
-  return row?.status === 'ACTIVE' ? { code: row.code, name: row.name } : null;
+  return row?.status === 'ACTIVE'
+    ? { code: row.code, name: row.name, address: row.address, logoUrl: row.logoUrl }
+    : null;
 }
 
 export async function listActiveFacilities(

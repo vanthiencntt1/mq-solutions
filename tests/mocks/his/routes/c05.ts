@@ -17,7 +17,6 @@ export const routes: Record<string, (body: Record<string, unknown>) => unknown> 
   'Subjects/GetSubjects': () => SUBJECTS,
   'Doctors/GetDoctors': () => doctors,
   'Rooms/GetRooms': () => ROOMS,
-  'Rooms/GetRoomsT7CN': () => ROOMS,
   'Rooms/GetRoombySubjectID': (b) => ROOMS.filter((r) => r.subject_id === String(b.ID)),
   'Rooms/GetRoomTimeSlots': () => TIME_SLOTS,
   'Rooms/GetRoomTimes': () => ROOMS.map((r) => ({ ID: String(r.id), StartTime: '07:00', EndTime: '16:00' })),

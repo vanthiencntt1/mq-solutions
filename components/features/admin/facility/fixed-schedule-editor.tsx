@@ -13,8 +13,6 @@ const WEEKDAYS = [
   { value: 3, label: 'T4' },
   { value: 4, label: 'T5' },
   { value: 5, label: 'T6' },
-  { value: 6, label: 'T7' },
-  { value: 0, label: 'CN' },
 ];
 
 function roomDoctorsText(map: Record<string, string>) {
@@ -56,7 +54,7 @@ export function FixedScheduleEditor({
       </p>
 
       <div>
-        <p className="mb-2 text-sm font-medium">Ngày cho đặt</p>
+        <p className="mb-2 text-sm font-medium">Ngày cho đặt (chỉ Thứ 2 – Thứ 6)</p>
         <div className="flex flex-wrap gap-4">
           {WEEKDAYS.map((d) => (
             <label key={d.value} className="flex items-center gap-2 text-sm">

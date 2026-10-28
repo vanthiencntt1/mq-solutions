@@ -28,7 +28,12 @@ function publicRow(row: FacilityRow, envHas: (ref: string) => boolean) {
   return {
     ...row,
     secretAvailable: envHas(row.secretRef),
-    webhookKeyAvailable: row.webhookKeyRef ? envHas(row.webhookKeyRef) : false,
+    // PayOS: webhook_key_ref là tiền tố, cần đủ 3 biến _CLIENT_ID, _API_KEY, _CHECKSUM_KEY.
+    webhookKeyAvailable: row.webhookKeyRef
+      ? row.payProvider === 'PAYOS'
+        ? ['CLIENT_ID', 'API_KEY', 'CHECKSUM_KEY'].every((s) => envHas(`${row.webhookKeyRef}_${s}`))
+        : envHas(row.webhookKeyRef)
+      : false,
   };
 }
 

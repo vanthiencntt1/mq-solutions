@@ -6,17 +6,28 @@ import type { BookingMode, ObjectType } from './types';
 //  FIXED – web tự vẽ khung giờ cố định theo cấu hình dưới; STT vẫn lấy số nhỏ nhất HIS chưa dùng.
 export type ScheduleSource = 'HIS' | 'FIXED';
 
+// Chỉ nhận khám từ Thứ 2 đến Thứ 6 (getUTCDay: 1..5).
+const isWeekdayNumber = (day: number) => day >= 1 && day <= 5;
+
+/** Ngày YYYY-MM-DD có rơi vào Thứ 2 – Thứ 6 không. */
+export function isWeekday(date: string): boolean {
+  return isWeekdayNumber(new Date(`${date}T00:00:00Z`).getUTCDay());
+}
+
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Giờ dạng HH:mm');
 const hisCode = z.string().trim().regex(/^\d{1,10}$/, 'Mã HIS chỉ gồm chữ số');
 
 export const fixedScheduleSchema = z
   .object({
-    // Thứ trong tuần cho đặt: 0 = Chủ nhật, 1 = Thứ 2 … 6 = Thứ 7
-    weekdays: z
-      .array(z.number().int().min(0).max(6))
-      .min(1)
-      .max(7)
-      .refine((v) => new Set(v).size === v.length, 'Thứ bị trùng'),
+    // Thứ trong tuần cho đặt: 1 = Thứ 2 … 5 = Thứ 6. Cấu hình cũ còn T7/CN (6/0) được bỏ khi đọc.
+    weekdays: z.preprocess(
+      (v) => (Array.isArray(v) ? v.filter((d) => typeof d !== 'number' || isWeekdayNumber(d)) : v),
+      z
+        .array(z.number().int().min(1).max(5))
+        .min(1)
+        .max(5)
+        .refine((v) => new Set(v).size === v.length, 'Thứ bị trùng'),
+    ),
     slots: z
       .array(
         z
@@ -43,7 +54,7 @@ export const fixedScheduleSchema = z
 export type FixedSchedule = z.infer<typeof fixedScheduleSchema>;
 
 export const defaultFixedSchedule: FixedSchedule = {
-  weekdays: [1, 2, 3, 4, 5, 6],
+  weekdays: [1, 2, 3, 4, 5],
   slots: [{ start: '07:00', end: '16:00', fromNumber: 1, toNumber: 200 }],
   doctorId: '',
   roomDoctors: {},
@@ -71,8 +82,6 @@ export interface Room {
   specialtyHisId: string;
   priceDv: number;
   priceBh: number;
-  priceT7: number;
-  priceCn: number;
 }
 export interface ExamSchedule {
   date: string;
@@ -124,6 +133,7 @@ export function allowedExamDate(date: string, now: Date, allowSameDay: boolean, 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const target = new Date(`${date}T00:00:00Z`);
   if (Number.isNaN(target.getTime()) || target.toISOString().slice(0, 10) !== date) return false;
+  if (!isWeekday(date)) return false;
   const today = new Date(`${localDate(now)}T00:00:00Z`);
   const distance = Math.round((target.getTime() - today.getTime()) / 86_400_000);
   return distance >= (allowSameDay ? 0 : 1) && distance <= maxDays;
@@ -158,7 +168,7 @@ export function fixedSchedules(
   const result: ExamSchedule[] = [];
   for (let i = allowSameDay ? 0 : 1; i <= maxDays; i++) {
     const day = new Date(today.getTime() + i * 86_400_000);
-    if (!config.weekdays.includes(day.getUTCDay())) continue;
+    if (!isWeekdayNumber(day.getUTCDay()) || !config.weekdays.includes(day.getUTCDay())) continue;
     result.push({ date: day.toISOString().slice(0, 10), roomId, doctorId: doctorId || undefined });
   }
   return result;
@@ -180,10 +190,9 @@ export function allowedMode(bookingMode: BookingMode, mode: 'ROOM' | 'DOCTOR'): 
   return bookingMode === 'BOTH' || (bookingMode === 'DOCTOR' ? mode === 'DOCTOR' : mode === 'ROOM');
 }
 
-export function priceFor(room: Room, date: string, objectType: ObjectType): number {
-  if (objectType === 'BHYT') return room.priceBh;
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return day === 6 ? room.priceT7 : day === 0 ? room.priceCn : room.priceDv;
+// Chỉ khám T2–T6 nên không còn giá Thứ 7 / Chủ nhật.
+export function priceFor(room: Room, objectType: ObjectType): number {
+  return objectType === 'BHYT' ? room.priceBh : room.priceDv;
 }
 
 export function availableSlot(

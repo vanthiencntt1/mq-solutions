@@ -58,12 +58,13 @@ function setup(used: number[] = []) {
 }
 
 describe('C05 khung giờ cố định (FIXED)', () => {
-  it('sinh ngày theo thứ, bỏ hôm nay và Chủ nhật, gắn bác sĩ theo phòng', () => {
+  it('sinh ngày theo thứ, bỏ hôm nay và cuối tuần, gắn bác sĩ theo phòng', () => {
     const rows = fixedSchedules(config, 101, now(), false);
     expect(rows[0]).toEqual({ date: '2026-10-28', roomId: 101, doctorId: '0001' });
     expect(rows.some((r) => r.date === '2026-10-27')).toBe(false);
+    expect(rows.some((r) => r.date === '2026-10-31')).toBe(false); // Thứ 7
     expect(rows.some((r) => r.date === '2026-11-01')).toBe(false); // Chủ nhật
-    expect(rows).toHaveLength(12); // 14 ngày trừ 2 Chủ nhật
+    expect(rows).toHaveLength(10); // 14 ngày trừ 2 Thứ 7 và 2 Chủ nhật
     expect(fixedSchedules(config, 102, now(), false)[0]?.doctorId).toBe('0009');
   });
 
@@ -91,5 +92,11 @@ describe('C05 khung giờ cố định (FIXED)', () => {
       }).success,
     ).toBe(false);
     expect(fixedScheduleSchema.safeParse({ ...config, doctorId: '' }).success).toBe(false);
+  });
+
+  it('cấu hình cũ có T7/CN vẫn đọc được, chỉ giữ T2–T6', () => {
+    const parsed = fixedScheduleSchema.parse({ ...config, weekdays: [0, 1, 3, 6] });
+    expect(parsed.weekdays).toEqual([1, 3]);
+    expect(fixedScheduleSchema.safeParse({ ...config, weekdays: [0, 6] }).success).toBe(false);
   });
 });

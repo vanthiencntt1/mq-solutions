@@ -13,6 +13,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PaymentMethodDialog, type PayAppId } from '@/components/features/payment/payment-methods';
 import { useState } from 'react';
 import { track } from '@/components/features/analytics/client';
 import { BookingStepper } from '@/components/features/booking/booking-stepper';
@@ -52,9 +53,16 @@ export function ConfirmStep({ data, facilityLogoUrl }: { data: Prepared; facilit
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [choosingApp, setChoosingApp] = useState(false);
 
-  async function confirm() {
+  function confirm() {
     if (!accepted) return;
+    // Online: hỏi cách trả (ngân hàng / ví) trước khi tạo phiếu, giống các app đặt khám quen thuộc.
+    if (payMethod === 'ONLINE') setChoosingApp(true);
+    else void submit();
+  }
+
+  async function submit(app?: PayAppId) {
     setBusy(true);
     setError('');
     try {
@@ -62,10 +70,11 @@ export function ConfirmStep({ data, facilityLogoUrl }: { data: Prepared; facilit
       track('booking_confirmed', { payment_method: payMethod, object_type: data.draft.objectType });
       router.push(
         payMethod === 'ONLINE'
-          ? `/dat-kham/thanh-toan?code=${encodeURIComponent(booking.code)}`
+          ? `/dat-kham/thanh-toan?code=${encodeURIComponent(booking.code)}${app ? `&app=${app}` : ''}`
           : `/tai-khoan/phieu-kham/${encodeURIComponent(booking.code)}`,
       );
     } catch (e) {
+      setChoosingApp(false);
       setError(e instanceof Error ? e.message : 'Không thể đặt khám lúc này');
     } finally {
       setBusy(false);
@@ -157,7 +166,9 @@ export function ConfirmStep({ data, facilityLogoUrl }: { data: Prepared; facilit
                   <QrCode className="text-primary size-6 shrink-0" strokeWidth={1.75} aria-hidden />
                   <span>
                     <strong>Thanh toán online</strong>
-                    <small className="text-slate-gray block">Nhận mã VietQR sau khi xác nhận</small>
+                    <small className="text-slate-gray block">
+                      Ngân hàng, MoMo, ZaloPay, ShopeePay, Viettel Money – có số thứ tự ngay
+                    </small>
                   </span>
                 </label>
               )}
@@ -226,6 +237,13 @@ export function ConfirmStep({ data, facilityLogoUrl }: { data: Prepared; facilit
           />
         </aside>
       </div>
+      <PaymentMethodDialog
+        open={choosingApp}
+        amount={data.draft.amount}
+        busy={busy}
+        onClose={() => setChoosingApp(false)}
+        onConfirm={(app) => void submit(app)}
+      />
     </div>
   );
 }

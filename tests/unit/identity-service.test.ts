@@ -147,6 +147,26 @@ describe('IdentityService.identify', () => {
     expect(full.maBN).toBe('BBB00002');
   });
 
+  it('HIS mới: 1 lần GetEncounter MMyy rỗng mỗi MaBN, so ngày khám thật (kể cả ngoài 6 tháng)', async () => {
+    const months: unknown[] = [];
+    const { svc } = setup((path, body) => {
+      if (path === 'Patients/getPatientsByMobile')
+        return [patient({ id: 'AAA00001' }), patient({ id: 'BBB00002' })];
+      if (path === 'MedicalRecords/GetEncounter') months.push(body.MMyy);
+      if (path === 'MedicalRecords/GetEncounter' && body.MMyy === '')
+        return body.PatientCode === 'AAA00001'
+          ? [{ CreateDate: '15/03/2023 09:00' }, { CreateDate: '02/01/2025 07:30' }]
+          : [{ CreateDate: '20/12/2024 10:00' }];
+      return notFound();
+    });
+    const full = await svc.resolve('acc1', 'BVA');
+    expect(full.maBN).toBe('AAA00001');
+    expect(full.hasVisited).toBe(true);
+    // Không quét theo tháng khi HIS đã trả toàn bộ hồ sơ
+    expect(months.length).toBeGreaterThan(0);
+    expect(months.every((m) => m === '')).toBe(true);
+  });
+
   it('HIS lỗi → UNAVAILABLE và không cache', async () => {
     let fail = true;
     const { svc, cache } = setup((path) => {

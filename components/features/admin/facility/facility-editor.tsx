@@ -586,8 +586,17 @@ export function FacilityEditor({ initial, editable }: { initial?: View; editable
           ) : null}
           {tab === 'payment' ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField id="provider" label="Nhà cung cấp">
-                <Input id="provider" value="SePay" disabled />
+              <FormField id="provider" label="Cổng thanh toán">
+                <select
+                  id="provider"
+                  className={selectClass}
+                  value={draft.payProvider}
+                  disabled={!editable}
+                  onChange={(e) => set('payProvider', e.target.value as FacilityCreateInput['payProvider'])}
+                >
+                  <option value="SEPAY">SePay – đọc biến động số dư</option>
+                  <option value="PAYOS">PayOS – mã QR theo đơn, có trang thanh toán</option>
+                </select>
               </FormField>
               <FormField id="bank" label="Mã ngân hàng">
                 <Input
@@ -613,7 +622,15 @@ export function FacilityEditor({ initial, editable }: { initial?: View; editable
                   onChange={(e) => set('bankAccountName', e.target.value || null)}
                 />
               </FormField>
-              <FormField id="webhook" label="Tên biến khóa webhook" hint="Không nhập giá trị khóa">
+              <FormField
+                id="webhook"
+                label={draft.payProvider === 'PAYOS' ? 'Tiền tố biến khóa PayOS' : 'Tên biến khóa webhook'}
+                hint={
+                  draft.payProvider === 'PAYOS'
+                    ? 'VD PAYOS_BVQ7 → cần PAYOS_BVQ7_CLIENT_ID, _API_KEY, _CHECKSUM_KEY. Không nhập giá trị khóa'
+                    : 'Không nhập giá trị khóa'
+                }
+              >
                 <Input
                   id="webhook"
                   value={draft.webhookKeyRef ?? ''}
@@ -625,7 +642,11 @@ export function FacilityEditor({ initial, editable }: { initial?: View; editable
                 <Input
                   id="webhook-url"
                   readOnly
-                  value={initial ? `/api/payment/sepay/${initial.code}` : 'Tạo cơ sở để nhận URL'}
+                  value={
+                    initial
+                      ? `/api/payment/${draft.payProvider === 'PAYOS' ? 'payos' : 'sepay'}/${initial.code}`
+                      : 'Tạo cơ sở để nhận URL'
+                  }
                 />
               </FormField>
               {initial ? (

@@ -15,8 +15,6 @@ const room: Room = {
   specialtyHisId: 'NOI',
   priceDv: 200000,
   priceBh: 34500,
-  priceT7: 250000,
-  priceCn: 300000,
 };
 
 describe('C05 quy tắc chọn lịch', () => {
@@ -25,6 +23,14 @@ describe('C05 quy tắc chọn lịch', () => {
     expect(allowedExamDate('2026-10-27', now, true)).toBe(true);
     expect(allowedExamDate('2026-11-11', now, true)).toBe(false);
     expect(allowedExamDate('2026-02-31', now, true)).toBe(false);
+  });
+  it('chỉ nhận ngày Thứ 2 – Thứ 6', () => {
+    expect(allowedExamDate('2026-10-30', now, false)).toBe(true); // Thứ 6
+    expect(allowedExamDate('2026-10-31', now, false)).toBe(false); // Thứ 7
+    expect(allowedExamDate('2026-11-01', now, false)).toBe(false); // Chủ nhật
+    expect(
+      filterSchedules([{ date: '2026-10-31', roomId: 101 }], { mode: 'ROOM', roomId: 101 }, now, false),
+    ).toEqual([]);
   });
   it('lọc theo phòng hoặc bác sĩ và cấu hình cơ sở', () => {
     const rows = [
@@ -36,11 +42,9 @@ describe('C05 quy tắc chọn lịch', () => {
     expect(allowedMode('SPECIALTY', 'DOCTOR')).toBe(false);
     expect(allowedMode('BOTH', 'DOCTOR')).toBe(true);
   });
-  it('giá ngày thường/T7/CN và BHYT', () => {
-    expect(priceFor(room, '2026-10-30', 'DICH_VU')).toBe(200000);
-    expect(priceFor(room, '2026-10-31', 'DICH_VU')).toBe(250000);
-    expect(priceFor(room, '2026-11-01', 'DICH_VU')).toBe(300000);
-    expect(priceFor(room, '2026-11-01', 'BHYT')).toBe(34500);
+  it('giá dịch vụ và BHYT', () => {
+    expect(priceFor(room, 'DICH_VU')).toBe(200000);
+    expect(priceFor(room, 'BHYT')).toBe(34500);
   });
   it('trừ STT HIS và giữ chỗ, chỉ nhận bước nhảy hợp lệ', () => {
     const slot = {

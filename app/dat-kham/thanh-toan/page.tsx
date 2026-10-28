@@ -7,13 +7,18 @@ import { getPaymentService } from '@/lib/services/payment';
 
 export const metadata: Metadata = { title: 'Thanh toán đặt khám', robots: { index: false } };
 
-export default async function PaymentPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+export default async function PaymentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string; app?: string }>;
+}) {
   const session = await requirePageSession();
-  const { code } = z.object({ code: appointmentCodeSchema }).parse(await searchParams);
+  const params = await searchParams;
+  const { code } = z.object({ code: appointmentCodeSchema }).parse(params);
   const payment = await getPaymentService().getOrCreate(session.id, code);
   return (
     <div className="[&_.section-title]:!text-[20px] md:[&_.section-title]:!text-[24px]">
-      <PaymentPanel initial={payment} initialNow={Date.now()} />
+      <PaymentPanel initial={payment} initialNow={Date.now()} initialApp={params.app} />
     </div>
   );
 }

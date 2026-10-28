@@ -4,6 +4,8 @@ export interface PaymentFacility {
   id: string;
   code: string;
   payOptions: ('ONLINE' | 'AT_FACILITY')[];
+  /** SEPAY (mặc định) | PAYOS – cổng nhận tiền của cơ sở. */
+  payProvider?: string;
   bankCode: string | null;
   bankAccountNo: string | null;
   bankAccountName: string | null;
@@ -32,6 +34,8 @@ export interface PaymentRecord {
 
 export interface IncomingTransfer {
   facilityId: string;
+  /** Cổng báo tiền vào (SEPAY | PAYOS); mặc định SEPAY. */
+  provider?: string;
   orderCode: string | null;
   providerTxnId: string;
   bankRef: string | null;
@@ -56,6 +60,8 @@ export interface PaymentRepository {
   completePaymentOutbox(code: string): Promise<{ id: string; code: string; attempts: number } | null>;
   completePaymentDone(id: string, code: string): Promise<void>;
   completePaymentFailed(id: string, code: string, attempts: number, error: string): Promise<void>;
+  /** Đơn còn PENDING của cơ sở dùng cổng `provider`, tạo trong khoảng [from, to] – để hỏi lại cổng khi lỡ webhook. */
+  pendingByProvider?(provider: string, from: Date, to: Date, limit: number): Promise<PaymentRecord[]>;
 }
 
 export interface PaymentHoldStore {

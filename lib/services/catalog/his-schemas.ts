@@ -68,8 +68,6 @@ export function parseRooms(raw: unknown): Room[] {
       specialtyHisId: r.subject_id ?? '',
       priceDv: r.price_dv ?? 0,
       priceBh: r.price_bh ?? 0,
-      priceT7: r.price_t7 ?? r.price_dv ?? 0,
-      priceCn: r.price_cn ?? r.price_dv ?? 0,
     }));
 }
 

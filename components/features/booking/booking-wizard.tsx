@@ -484,7 +484,6 @@ export function BookingWizard({
                         <strong className="block text-lg">
                           {d.slice(8)}/{d.slice(5, 7)}
                         </strong>
-                        {(weekday === 0 || weekday === 6) && <span className="block text-xs">Cuối tuần</span>}
                       </button>
                     );
                   })}
@@ -529,7 +528,7 @@ export function BookingWizard({
                 )}
               </div>
               {room && date && (
-                <p className="font-semibold">Giá dự kiến: {formatMoney(priceFor(room, date, objectType))}</p>
+                <p className="font-semibold">Giá dự kiến: {formatMoney(priceFor(room, objectType))}</p>
               )}
             </Card>
           )}
@@ -549,7 +548,7 @@ export function BookingWizard({
               date: date ? `${date.slice(8)}/${date.slice(5, 7)}/${date.slice(0, 4)}` : undefined,
               time: slot?.label,
               roomName: room?.name,
-              amount: room && date ? priceFor(room, date, objectType) : undefined,
+              amount: room && date ? priceFor(room, objectType) : undefined,
             }}
           />
         </aside>

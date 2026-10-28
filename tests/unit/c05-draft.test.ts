@@ -43,8 +43,6 @@ function setup(visited = true) {
         specialtyHisId: 'NOI',
         priceDv: 200000,
         priceBh: 34500,
-        priceT7: 250000,
-        priceCn: 300000,
       },
     ],
     doctors: async () => [],

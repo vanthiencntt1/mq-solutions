@@ -10,14 +10,17 @@ const Query = z.object({
     .string()
     .regex(/^(0[1-9]|1[0-2])\d{2}$/)
     .optional(),
+  from: z.iso.date().optional(),
+  to: z.iso.date().optional(),
 });
 
 // C04 mục 6: MaBN trong URL/query bị bỏ qua; service tự định danh lại phía server.
 export const GET = route(async (req, ctx: { params: Promise<{ code: string }> }) => {
   const s = await requireApiSession(req);
   const { code } = parseWith(Params, await ctx.params);
-  const { mmyy } = parseWith(Query, Object.fromEntries(new URL(req.url).searchParams));
-  return ok(await getRecordsService().encounters(s.id, code, mmyy, requestCtx(req).ipHash), undefined, {
+  const filter = parseWith(Query, Object.fromEntries(new URL(req.url).searchParams));
+  // Không có tham số = toàn bộ hồ sơ của bệnh nhân tại cơ sở
+  return ok(await getRecordsService().encounters(s.id, code, filter, requestCtx(req).ipHash), undefined, {
     headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
   });
 });

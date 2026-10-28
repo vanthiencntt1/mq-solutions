@@ -13,6 +13,7 @@ const facilitySelect = {
   id: true,
   code: true,
   payOptions: true,
+  payProvider: true,
   bankCode: true,
   bankAccountNo: true,
   bankAccountName: true,
@@ -67,6 +68,7 @@ async function unmatched(tx: Prisma.TransactionClient, input: IncomingTransfer, 
   await tx.payment.create({
     data: {
       facilityId: input.facilityId,
+      provider: input.provider ?? 'SEPAY',
       amount: input.amount,
       paidAmount: input.amount,
       providerTxnId: input.providerTxnId,
@@ -101,6 +103,7 @@ async function recordTransfer(input: IncomingTransfer): Promise<RecordTransferRe
           await tx.payment.update({
             where: { id: payment.id },
             data: {
+              provider: input.provider ?? 'SEPAY',
               providerTxnId: input.providerTxnId,
               bankRef: input.bankRef,
               paidAmount: input.amount,
@@ -119,6 +122,7 @@ async function recordTransfer(input: IncomingTransfer): Promise<RecordTransferRe
         await tx.payment.update({
           where: { id: payment.id },
           data: {
+            provider: input.provider ?? 'SEPAY',
             providerTxnId: input.providerTxnId,
             bankRef: input.bankRef,
             paidAmount: input.amount,
@@ -142,7 +146,9 @@ async function recordTransfer(input: IncomingTransfer): Promise<RecordTransferRe
             fromStatus: appointment.status,
             toStatus: nextStatus,
             actorType: 'SYSTEM',
-            note: refund ? 'Tiền đến sau hạn, số đã được dùng' : 'SePay xác nhận tiền vào',
+            note: refund
+              ? 'Tiền đến sau hạn, số đã được dùng'
+              : `${input.provider === 'PAYOS' ? 'PayOS' : 'SePay'} xác nhận tiền vào`,
           },
         });
         if (refund) return { kind: 'refund' };
@@ -202,6 +208,15 @@ export const prismaPaymentRepository: PaymentRepository = {
     return (await find(code))!;
   },
   record: recordTransfer,
+  async pendingByProvider(provider, from, to, limit) {
+    const rows = await prisma.payment.findMany({
+      where: { status: 'PENDING', createdAt: { gte: from, lte: to }, facility: { payProvider: provider } },
+      include: paymentInclude,
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+    });
+    return rows.map(toRecord).filter((row): row is PaymentRecord => row !== null);
+  },
   async expireDue(before, limit) {
     const rows = await prisma.payment.findMany({
       where: {

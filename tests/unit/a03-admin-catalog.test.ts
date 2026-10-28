@@ -33,8 +33,6 @@ function setup() {
         if (path === 'Subjects/GetSubjects') return [{ id: 1, name: 'Nội tổng quát' }] as T;
         if (path === 'Rooms/GetRooms')
           return [{ id: 101, name: 'Phòng 101', price_dv: 100000, price_t7: 120000 }] as T;
-        if (path === 'Rooms/GetRoomsT7CN')
-          return [{ id: 101, name: 'Phòng 101', price_t7: 130000, price_cn: 140000 }] as T;
         if (path === 'Schedules/GetSchedules')
           return [{ date_time: '20261028', room_id: 101, doctor_id: 7 }] as T;
         if (path === 'Rooms/GetRoomTimeSlots')
@@ -131,10 +129,11 @@ describe('A03 danh mục admin', () => {
     expect(calls).toEqual(['Subjects/GetSubjects']);
   });
 
-  it('gộp giá cuối tuần và đếm số đã dùng của khung giờ', async () => {
-    const { service } = setup();
+  it('phòng chỉ lấy GetRooms (không gọi T7/CN) và đếm số đã dùng của khung giờ', async () => {
+    const { service, calls } = setup();
     const rooms = await service.read(actor, { facility: 'BVA', kind: 'rooms' });
-    expect(rooms.rows).toMatchObject([{ priceDv: 100000, priceT7: 130000, priceCn: 140000 }]);
+    expect(rooms.rows).toMatchObject([{ priceDv: 100000 }]);
+    expect(calls).not.toContain('Rooms/GetRoomsT7CN');
     const slots = await service.read(actor, {
       facility: 'BVA',
       kind: 'slots',

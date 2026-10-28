@@ -246,6 +246,20 @@ export class AuthService {
     return this.toProfile(await this.requireAccount(accountId));
   }
 
+  /** Dữ liệu tối thiểu cho phiếu bệnh nhân, chỉ gọi sau khi quyền xem lần khám đã được xác nhận. */
+  async getReportProfile(accountId: string) {
+    const account = await this.requireAccount(accountId);
+    const profile = this.toProfile(account);
+    return {
+      fullName: account.fullName,
+      birthYear: profile.birthYear,
+      gender: profile.gender,
+      addressLine: profile.addressLine,
+      phoneMasked: profile.phoneMasked,
+      insuranceNoMasked: profile.insuranceNoMasked,
+    };
+  }
+
   async updateProfile(accountId: string, input: UpdateProfileInput, ctx: RequestCtx): Promise<Profile> {
     const account = await this.requireAccount(accountId);
     const patch: Partial<AccountRecord> = {};

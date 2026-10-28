@@ -9,6 +9,7 @@ const qrSchema = z.object({
   amount: z.number().int(),
   content: z.string(),
   qrImageUrl: z.url(),
+  checkoutUrl: z.url().optional(),
   expiresAt: z.coerce.date(),
 });
 

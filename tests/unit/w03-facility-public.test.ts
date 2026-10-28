@@ -192,8 +192,6 @@ describe('W03/W04 public catalog', () => {
               specialtyHisId: '10',
               priceDv: 200000,
               priceBh: 0,
-              priceT7: 200000,
-              priceCn: 200000,
             },
           ];
         },
